@@ -1,0 +1,173 @@
+{
+    "metadata": {
+        "id": "test-doc-001",
+        "title": "公司章程",
+        "type": "参考文本",
+        "created_at": "2022-08-20",
+        "file_url": "https://example.com/company-charter.docx",
+        "drafters": [
+            {"name": "刘冉", "status": "active"}
+        ]
+    },
+    "structure": {
+        "id": "section-1",
+        "level": 1,
+        "page": 1,
+        "title": "公司章程",
+        "title_tags": {
+            "role": "NON_CLAUSE",
+            "region": "COVER",
+            "nc_type": "COVER_TITLE"
+        },
+        "content": "公司章程",
+        "content_tags": {
+            "role": "NON_CLAUSE",
+            "region": "COVER",
+            "nc_type": "COVER_TITLE"
+        },
+        "children": [
+            {
+                "id": "section-2",
+                "level": 2,
+                "page": 2,
+                "title": "第一章 总则",
+                "title_tags": {
+                    "role": "NON_CLAUSE",
+                    "region": "MAIN",
+                    "nc_type": ""
+                },
+                "content": "第一章 总则",
+                "content_tags": {
+                    "role": "NON_CLAUSE",
+                    "region": "MAIN",
+                    "nc_type": ""
+                },
+                "children": [
+                    {
+                        "id": "clause-1",
+                        "level": "2-1",
+                        "page": 2,
+                        "title": "第一条 公司名称和住所",
+                        "title_tags": {
+                            "role": "",
+                            "region": "",
+                            "nc_type": ""
+                        },
+                        "content": "第一条 公司名称和住所",
+                        "content_tags": {
+                            "role": "CLAUSE",
+                            "region": "MAIN",
+                            "nc_type": "TITLE"
+                        }
+                    },
+                    {
+                        "id": "clause-2",
+                        "level": "2-2",
+                        "page": 3,
+                        "title": "第二条 公司经营范围",
+                        "title_tags": {
+                            "role": "",
+                            "region": "",
+                            "nc_type": ""
+                        },
+                        "content": "第二条 公司经营范围",
+                        "content_tags": {
+                            "role": "CLAUSE",
+                            "region": "MAIN",
+                            "nc_type": "TITLE"
+                        },
+                        "children": [
+                            {
+                                "id": "item-1",
+                                "parent_id": "clause-2",
+                                "level": "2-2-1",
+                                "page": 3,
+                                "content": "(一) 从事技术开发、技术咨询、技术服务；",
+                                "content_tags": {
+                                    "role": "CLAUSE",
+                                    "region": "MAIN",
+                                    "nc_type": "CLAUSE_BODY"
+                                }
+                            },
+                            {
+                                "id": "item-2",
+                                "parent_id": "clause-2",
+                                "level": "2-2-2",
+                                "page": 3,
+                                "content": "(二) 从事软件开发和销售；",
+                                "content_tags": {
+                                    "role": "CLAUSE",
+                                    "region": "MAIN",
+                                    "nc_type": "CLAUSE_BODY"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "id": "section-3",
+                "level": 3,
+                "page": 4,
+                "title": "第二章 股东会",
+                "title_tags": {
+                    "role": "NON_CLAUSE",
+                    "region": "MAIN",
+                    "nc_type": ""
+                },
+                "content": "第二章 股东会",
+                "content_tags": {
+                    "role": "NON_CLAUSE",
+                    "region": "MAIN",
+                    "nc_type": ""
+                },
+                "children": [
+                    {
+                        "id": "clause-3",
+                        "level": "3-1",
+                        "page": 4,
+                        "title": "第七条 公司股东会由全体股东组成，是公司的权力机构，行使下列职权：",
+                        "title_tags": {
+                            "role": "",
+                            "region": "",
+                            "nc_type": ""
+                        },
+                        "content": "第七条 公司股东会由全体股东组成，是公司的权力机构，行使下列职权：",
+                        "content_tags": {
+                            "role": "CLAUSE",
+                            "region": "MAIN",
+                            "nc_type": "TITLE"
+                        },
+                        "children": [
+                            {
+                                "id": "item-3",
+                                "parent_id": "clause-3",
+                                "level": "3-1-1",
+                                "page": 4,
+                                "content": "(1) 决定公司的经营方针和投资计划；",
+                                "content_tags": {
+                                    "role": "CLAUSE",
+                                    "region": "MAIN",
+                                    "nc_type": "CLAUSE_BODY"
+                                }
+                            },
+                            {
+                                "id": "item-4",
+                                "parent_id": "clause-3",
+                                "level": "3-1-2",
+                                "page": 4,
+                                "content": "(2) 选举和更换董事；",
+                                "content_tags": {
+                                    "role": "CLAUSE",
+                                    "region": "MAIN",
+                                    "nc_type": "CLAUSE_BODY"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    },
+    "vectorization": true
+}

@@ -1,0 +1,63 @@
+from pydantic import BaseModel, Field
+
+from datetime import datetime
+
+
+class ClauseBase(BaseModel):
+    title: [str] = Field(None, description="条款标题")
+    order_index: int = Field(..., description="全局顺序")
+    content: str = Field(..., description="条款内容")
+    lang: str = Field(default="zh", description="文本语种")
+    loc: [dict[str, any]] = Field(None, description="定位信息")
+    role: [str] = Field(default="CLAUSE", description="角色")
+    region: [str] = Field(None, description="区域")
+    nc_type: [str] = Field(None, description="非条款类型")
+    metadata: [dict[str, any]] = Field(None, description="业务元数据")
+
+
+class ClauseCreate(ClauseBase):
+    doc_id: str = Field(..., description="文档ID")
+    section_id: [str] = Field(None, description="章节ID")
+
+
+class ClauseUpdate(BaseModel):
+    title: [str] = Field(None, description="条款标题")
+    order_index: [int] = Field(None, description="全局顺序")
+    content: [str] = Field(None, description="条款内容")
+    lang: [str] = Field(None, description="文本语种")
+    loc: [dict[str, any]] = Field(None, description="定位信息")
+    role: [str] = Field(None, description="角色")
+    region: [str] = Field(None, description="区域")
+    nc_type: [str] = Field(None, description="非条款类型")
+    metadata: [dict[str, any]] = Field(None, description="业务元数据")
+
+
+class ClauseResponse(ClauseBase):
+    id: str
+    doc_id: str
+    section_id: [str]
+    embedding_id: [str]
+    embedding_dimension: [int]
+    created_at: datetime
+    updated_at: datetime
+    deleted: bool
+    
+    class Config:
+        from_attributes = True
+
+
+class ClauseListResponse(BaseModel):
+    items: list[ClauseResponse]
+    total: int
+    page: int
+    page_size: int
+
+
+class ClauseWithItemsResponse(ClauseResponse):
+    items: list["ClauseItemResponse"] = []
+
+
+# 避免循环导入
+from app.schemas.clause_item import ClauseItemResponse
+
+ClauseWithItemsResponse.model_rebuild()
