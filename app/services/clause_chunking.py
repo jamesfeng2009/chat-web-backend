@@ -2,15 +2,11 @@
 条款切分服务
 基于结构特征和语义相似度的智能切分算法
 """
-import os
-import re
 import numpy as np
 from dataclasses import dataclass
-from typing import List, Optional, Dict, Any
-import regex as re
+import regex
 from sentence_transformers import SentenceTransformer
 
-from app.core.config import settings
 from app.core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -22,7 +18,7 @@ class Block:
     text: str
     indent: int = 0  # 建议用像素或空格数，越大表示越深
     page_num: int = 0
-    bbox: Optional[tuple] = None
+    bbox: tuple[int, int, int, int] | None = None
     
     @classmethod
     def from_text_block(cls, text_block):
@@ -87,7 +83,7 @@ class ClauseChunkingService:
                 logger.error(f"Failed to load cross encoder model {model_name}: {e}")
                 raise
     
-    def embed_batch(self, texts: List[str], batch_size=64) -> np.ndarray:
+    def embed_batch(self, texts: list[str], batch_size=64) -> np.ndarray:
         """批量文本嵌入"""
         if not texts: 
             return np.zeros((0,1), dtype=np.float32)
@@ -144,7 +140,7 @@ class ClauseChunkingService:
             elif any(ch == v for v in pairs.values()): cnt -= 1
         return cnt > 0
     
-    def _post_fix_spans(self, spans: List[List[int]], blocks: List[Block], V: np.ndarray) -> List[List[int]]:
+    def _post_fix_spans(self, spans: list[list[int]], blocks: list[Block], V: np.ndarray) -> list[list[int]]:
         """轻量二次修正：合并过短段；标题强切"""
         if not spans: return spans
         def cos(i,j):
@@ -190,7 +186,7 @@ class ClauseChunkingService:
 
         return spans
     
-    def chunk_blocks(self, blocks: List[Block], mode: str = "contract", use_cross_encoder=False) -> Dict[str, Any]:
+    def chunk_blocks(self, blocks: list[Block], mode: str = "contract", use_cross_encoder=False) -> dict[str, any]:
         """
         对文本块进行条款切分
         
@@ -229,7 +225,7 @@ class ClauseChunkingService:
         # 调用核心切分算法
         return self._clause_chunk(blocks, use_cross_encoder, cfg)
     
-    def _clause_chunk(self, blocks: List[Block], use_cross_encoder=False, cfg: Optional[Dict[str, Any]]=None):
+    def _clause_chunk(self, blocks: list[Block], use_cross_encoder=False, cfg: dict[str, any] | None = None):
         """
         准确度优先分段：
         - 仅用形态与相似度，无关键词表

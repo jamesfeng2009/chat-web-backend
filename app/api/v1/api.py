@@ -11,7 +11,8 @@ from app.api.v1.endpoints import (
     vector_search,
     document_parsing,
     document_llm_processing,
-    vector_ingestion
+    vector_ingestion,
+    document_chunking
 )
 
 api_router = APIRouter()
@@ -27,3 +28,4 @@ api_router.include_router(vector_search.router, prefix="/vector-search", tags=["
 api_router.include_router(document_parsing.router, prefix="/document-parsing", tags=["document-parsing"])
 api_router.include_router(document_llm_processing.router, prefix="/llm-processing", tags=["llm-processing"])
 api_router.include_router(vector_ingestion.router, prefix="/vector-collections", tags=["vector-ingestion"])
+api_router.include_router(document_chunking.router, prefix="/chunking", tags=["document-chunking"])

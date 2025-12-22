@@ -10,6 +10,8 @@ logger = get_logger(__name__)
 from app.services.llm_labeling import PipelineLLMLabelingService
 from app.services.vector_ingestion import VectorIngestionService
 from app.services.document_structure import DocumentStructureService
+from app.services.clause_chunking import clause_chunking_service
+from app.services.parser import parser_service
 from app.schemas.vector_ingestion import VectorIngestItem, VectorIngestRequest
 
 
@@ -488,3 +490,231 @@ class DocumentProcessingService:
                 text_parts.append(f"- {content}")
         
         return "\n\n".join(text_parts)
+    
+    def process_with_clause_chunking(self, content: bytes, file_type: str, doc_id: str, doc_name: str, 
+                                 mode: str = "contract", use_cross_encoder: bool = False,
+                                 embedding_model: str = "text-embedding-3-large",
+                                 collection_name: str = "mirrors_clause_vectors",
+                                 lang: str = "zh") -> dict[str, any]:
+        """
+        使用条款切分算法处理文档
+        
+        Args:
+            content: 文档内容字节数组
+            file_type: 文件类型
+            doc_id: 文档ID
+            doc_name: 文档名称
+            mode: 切分模式 - "contract"(合同模式), "summary"(汇总模式), "single"(单条款模式)
+            use_cross_encoder: 是否使用交叉编码器
+            embedding_model: 嵌入模型
+            collection_name: 向量集合名称
+            lang: 语言代码
+            
+        Returns:
+            处理结果
+        """
+        try:
+            # 1. 解析文档
+            logger.info(f"开始解析文档: {doc_name}")
+            text_blocks = parser_service.parse(content, file_type)
+            
+            # 转换为Block结构
+            from app.services.clause_chunking import Block
+            blocks = [Block.from_text_block(block) for block in text_blocks if block.text.strip()]
+            
+            if not blocks:
+                logger.warning("没有有效的文本块可处理")
+                return {
+                    "success": False,
+                    "message": "文档中没有有效的文本内容",
+                    "doc_id": doc_id,
+                    "steps": {},
+                    "data": {}
+                }
+            
+            # 2. 执行条款切分
+            logger.info(f"使用模式 {mode} 执行条款切分")
+            chunk_result = clause_chunking_service.chunk_blocks(
+                blocks, mode=mode, use_cross_encoder=use_cross_encoder
+            )
+            
+            # 3. 将切分结果转换为Segment对象
+            logger.info("将切分结果转换为段落对象")
+            segments = []
+            for i, span in enumerate(chunk_result["spans"]):
+                # 合并span中的文本
+                text = "\n".join([blocks[j].text for j in span])
+                
+                # 获取第一个块的页面信息
+                first_block = blocks[span[0]]
+                
+                # 创建段落对象
+                segment = {
+                    "id": f"{doc_id}_chunk_{i}",
+                    "text": text,
+                    "order_index": i,
+                    "block_type": "clause_chunk",
+                    "level": 0,
+                    "page_num": first_block.page_num,
+                    "bbox": first_block.bbox,
+                    "role": None,  # 后续由LLM标注
+                    "region": None,
+                    "nc_type": None,
+                    "segment_ids": span,
+                    "score": 1.0  # 默认分数
+                }
+                segments.append(segment)
+            
+            # 4. LLM标注
+            logger.info("开始三管线LLM标注")
+            labeled_segments = await self.llm_service.label_segments(segments)
+            
+            # 5. 准备向量摄入数据
+            logger.info("准备向量摄入数据")
+            ingest_items = self._prepare_ingest_items_from_chunks(
+                labeled_segments, chunk_result["spans"], chunk_result["texts"],
+                doc_id, doc_name, lang
+            )
+            
+            # 6. 向量化和存储
+            if ingest_items:
+                logger.info(f"开始向量化和存储到集合 {collection_name}")
+                ingest_request = VectorIngestRequest(
+                    embedding_model=embedding_model,
+                    items=ingest_items
+                )
+                
+                ingest_result = await self.vector_service.ingest_items_to_collection(
+                    collection_name,
+                    ingest_request
+                )
+                
+                # 返回处理结果
+                return {
+                    "success": True,
+                    "message": "使用条款切分处理文档成功",
+                    "doc_id": doc_id,
+                    "steps": {
+                        "chunking": {
+                            "success": True,
+                            "chunks_count": len(chunk_result["spans"]),
+                            "mode": mode,
+                            "use_cross_encoder": use_cross_encoder
+                        },
+                        "labeling": {
+                            "success": True,
+                            "segments_count": len(segments),
+                            "labeled_count": len(labeled_segments)
+                        },
+                        "vectorization": ingest_result
+                    },
+                    "data": {
+                        "chunks": chunk_result,
+                        "segments": segments,
+                        "labeled_segments": labeled_segments,
+                        "total_chunks": len(chunk_result["spans"]),
+                        "ingested": ingest_result.data.get("succeeded", 0),
+                        "failed": ingest_result.data.get("failed", 0)
+                    }
+                }
+            else:
+                logger.warning("没有符合条件的条款单元可处理")
+                return {
+                    "success": True,
+                    "message": "条款切分完成，但没有生成可向量化的条款单元",
+                    "doc_id": doc_id,
+                    "steps": {
+                        "chunking": {
+                            "success": True,
+                            "chunks_count": len(chunk_result["spans"]),
+                            "mode": mode,
+                            "use_cross_encoder": use_cross_encoder
+                        },
+                        "labeling": {
+                            "success": True,
+                            "segments_count": len(segments),
+                            "labeled_count": len(labeled_segments)
+                        },
+                        "vectorization": {"success": True, "message": "向量化跳过"}
+                    },
+                    "data": {
+                        "chunks": chunk_result,
+                        "segments": segments,
+                        "labeled_segments": labeled_segments,
+                        "total_chunks": len(chunk_result["spans"]),
+                        "ingested": 0,
+                        "failed": 0
+                    }
+                }
+                
+        except Exception as e:
+            logger.error(f"使用条款切分处理文档失败: {str(e)}")
+            return {
+                "success": False,
+                "message": f"条款切分处理文档失败: {str(e)}",
+                "doc_id": doc_id,
+                "steps": {},
+                "data": {}
+            }
+    
+    def _prepare_ingest_items_from_chunks(
+        self,
+        labeled_segments: list[dict[str, any]],
+        chunk_spans: list[list[int]],
+        chunk_texts: list[str],
+        doc_id: str,
+        doc_name: str,
+        lang: str
+    ) -> list[VectorIngestItem]:
+        """
+        从切分后的段落准备向量摄入项
+        
+        Args:
+            labeled_segments: 已标注的段落列表
+            chunk_spans: 切分结果的spans
+            chunk_texts: 切分结果的texts
+            doc_id: 文档ID
+            doc_name: 文档名称
+            lang: 语言代码
+            
+        Returns:
+            向量摄入项列表
+        """
+        ingest_items = []
+        
+        for i, (span, text, segment) in enumerate(zip(chunk_spans, chunk_texts, labeled_segments)):
+            # 根据标注结果确定unit_type
+            role = segment.get("role", "NON_CLAUSE")
+            unit_type = "CLAUSE" if role == "CLAUSE" else "CLAUSE_ITEM"
+            
+            # 创建条款单元的摄入项
+            clause_item = VectorIngestItem(
+                unit_type=unit_type,
+                doc_id=doc_id,
+                doc_name=doc_name,
+                clause_id=segment.get("id"),
+                clause_title=None,  # 可以从segment中提取
+                clause_order_index=i,
+                item_id=segment.get("id"),
+                parent_item_id=None,
+                item_order_index=0,
+                lang=lang,
+                role=role,
+                region=segment.get("region", "MAIN"),
+                nc_type=segment.get("nc_type"),
+                content=text,  # 使用切分后的文本
+                loc={
+                    "chunk_span": span,
+                    "segment_ids": segment.get("segment_ids", span),
+                    "order_index": i
+                },
+                biz_tags={
+                    "score": segment.get("score", 1.0),
+                    "block_count": len(span),
+                    "chunking_method": "semantic_structure"
+                }
+            )
+            
+            ingest_items.append(clause_item)
+        
+        return ingest_items

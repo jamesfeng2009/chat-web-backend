@@ -45,6 +45,11 @@ class Settings(PydanticBaseSettings):
     EMBEDDING_MODEL: str = "text-embedding-3-large"
     EMBEDDING_DIMENSION: int = 1536
     
+    # 条款切分配置
+    CLAUSE_CHUNKING_MODEL: str = "BAAI/bge-m3"
+    CLAUSE_CHUNKING_CROSS_ENCODER: str = "cross-encoder/ms-marco-MiniLM-L-12-v2"
+    CLAUSE_CHUNKING_CACHE_DIR: str = "./models/clause_chunking"
+    
     # 文档处理配置
     MAX_FILE_SIZE: int = 100 * 1024 * 1024  # 100MB
     ALLOWED_FILE_TYPES: list[str] = [
