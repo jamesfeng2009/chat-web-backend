@@ -17,7 +17,7 @@ class Settings(PydanticBaseSettings):
     PORT: int = 8000
 
     # 数据库配置
-    DATABASE_URL: str = "mysql+pymysql://root:password@localhost:3306/legal_db"
+    DATABASE_URL: str = "postgresql://postgres:password@localhost:5432/legal_db"
     DATABASE_POOL_SIZE: int = 10
     DATABASE_MAX_OVERFLOW: int = 20
     DATABASE_ECHO: bool = False  # 生产环境设为False，开发时可设为True用于调试

@@ -1,20 +1,20 @@
 version: '3.8'
 
 services:
-  # MySQL数据库
-  mysql:
-    image: mysql:8.0
-    container_name: legal-mysql
+  # PostgreSQL数据库
+  postgres:
+    image: postgres:15-alpine
+    container_name: legal-postgres
     environment:
-      MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: legal_db
-      MYSQL_USER: legal_user
-      MYSQL_PASSWORD: legal_password
+      POSTGRES_DB: legal_db
+      POSTGRES_USER: legal_user
+      POSTGRES_PASSWORD: legal_password
+      POSTGRES_ROOT_PASSWORD: password
     ports:
-      - "3306:3306"
+      - "5432:5432"
     volumes:
-      - mysql_data:/var/lib/mysql
-      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init_postgres.sql:/docker-entrypoint-initdb.d/init_postgres.sql
     networks:
       - legal-network
 
@@ -89,7 +89,7 @@ services:
       - ./storage:/app/storage
       - ./logs:/app/logs
     environment:
-      - DATABASE_URL=mysql+pymysql://legal_user:legal_password@mysql:3306/legal_db
+      - DATABASE_URL=postgresql://legal_user:legal_password@postgres:5432/legal_db
       - REDIS_URL=redis://redis:6379/0
       - MILVUS_HOST=milvus-standalone
       - MILVUS_PORT=19530
@@ -97,7 +97,7 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/1
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
     depends_on:
-      - mysql
+      - postgres
       - redis
       - milvus-standalone
       - minio
@@ -113,7 +113,7 @@ services:
       - ./storage:/app/storage
       - ./logs:/app/logs
     environment:
-      - DATABASE_URL=mysql+pymysql://legal_user:legal_password@mysql:3306/legal_db
+      - DATABASE_URL=postgresql://legal_user:legal_password@postgres:5432/legal_db
       - REDIS_URL=redis://redis:6379/0
       - MILVUS_HOST=milvus-standalone
       - MILVUS_PORT=19530
@@ -121,7 +121,7 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/1
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
     depends_on:
-      - mysql
+      - postgres
       - redis
       - milvus-standalone
       - minio
@@ -129,7 +129,7 @@ services:
       - legal-network
 
 volumes:
-  mysql_data:
+  postgres_data:
   redis_data:
   etcd_data:
   minio_data:
