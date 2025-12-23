@@ -1,5 +1,6 @@
 import re
 import json
+from typing import Any
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 
@@ -26,9 +27,9 @@ class SearchService:
         query: str,
         embedding_model: str = "text-embedding-3-large",
         limit: int = 10,
-        filters: [dict[str, any]] = None,
+        filters: dict[str, Any] | None = None,
         include_content: bool = True
-    ) -> dict[str, any]:
+    ) -> dict[str, Any]:
         """
         语义搜索
         
@@ -85,9 +86,9 @@ class SearchService:
         query: str,
         embedding_model: str = "text-embedding-3-large",
         limit: int = 10,
-        filters: [dict[str, any]] = None,
+        filters: dict[str, Any] | None = None,
         include_content: bool = True
-    ) -> dict[str, any]:
+    ) -> dict[str, Any]:
         """
         相似度搜索（与语义搜索相同，为了API区分）
         
@@ -117,9 +118,9 @@ class SearchService:
         db: Session,
         query: str,
         limit: int = 10,
-        filters: [dict[str, any]] = None,
+        filters: dict[str, Any] | None = None,
         include_content: bool = True
-    ) -> dict[str, any]:
+    ) -> dict[str, Any]:
         """
         关键词搜索
         
@@ -172,10 +173,10 @@ class SearchService:
         query: str,
         embedding_model: str = "text-embedding-3-large",
         limit: int = 10,
-        filters: [dict[str, any]] = None,
+        filters: dict[str, Any] | None = None,
         include_content: bool = True,
         semantic_weight: float = 0.7
-    ) -> dict[str, any]:
+    ) -> dict[str, Any]:
         """
         混合搜索（语义+关键词）
         
@@ -229,7 +230,7 @@ class SearchService:
             logger.error(f"Error in hybrid search: {e}")
             raise
     
-    def _build_filter_expression(self, filters: [dict[str, any]]) -> [str]:
+    def _build_filter_expression(self, filters: dict[str, Any] | None) -> str | None:
         """构建过滤表达式"""
         if not filters:
             return None
@@ -255,7 +256,7 @@ class SearchService:
         
         return " and ".join(conditions) if conditions else None
     
-    def _format_search_result(self, hit: dict[str, any], include_content: bool) -> dict[str, any]:
+    def _format_search_result(self, hit: dict[str, Any], include_content: bool) -> dict[str, Any]:
         """格式化搜索结果"""
         entity = hit.get("entity", {})
         
@@ -283,13 +284,15 @@ class SearchService:
                 result["title"] = entity.get("title")
         
         # 添加元数据
+        metadata = result.get("metadata") or {}
         for key in ["lang", "region", "nc_type", "loc"]:
             if key in entity:
-                result["metadata"][key] = entity[key]
+                metadata[key] = entity[key]
+        result["metadata"] = metadata
         
         return result
     
-    def _format_db_search_result(self, result: dict[str, any], include_content: bool) -> dict[str, any]:
+    def _format_db_search_result(self, result: dict[str, Any], include_content: bool) -> dict[str, Any]:
         """格式化数据库搜索结果"""
         item_type = result.get("type", "CLAUSE")
         
@@ -311,13 +314,15 @@ class SearchService:
             item["content"] = result.get("content")
         
         # 添加元数据
+        metadata = item.get("metadata") or {}
         for key in ["lang", "region", "nc_type", "loc"]:
             if key in result:
-                item["metadata"][key] = result[key]
+                metadata[key] = result[key]
+        item["metadata"] = metadata
         
         return item
     
-    def _aggregate_items_to_clauses(self, items: list[dict[str, any]]) -> list[dict[str, any]]:
+    def _aggregate_items_to_clauses(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """聚合子项到条款"""
         clause_items = {}
         standalone_items = []
@@ -352,8 +357,8 @@ class SearchService:
         db: Session,
         query: str,
         limit: int,
-        filters: [dict[str, any]]
-    ) -> list[dict[str, any]]:
+        filters: dict[str, Any] | None
+    ) -> list[dict[str, Any]]:
         """关键词搜索条款"""
         try:
             # 构建查询
@@ -416,8 +421,8 @@ class SearchService:
         db: Session,
         query: str,
         limit: int,
-        filters: [dict[str, any]]
-    ) -> list[dict[str, any]]:
+        filters: dict[str, Any] | None
+    ) -> list[dict[str, Any]]:
         """关键词搜索子项"""
         try:
             # 构建查询
@@ -486,10 +491,10 @@ class SearchService:
     
     def _merge_search_results(
         self,
-        semantic_results: dict[str, any],
-        keyword_results: dict[str, any],
+        semantic_results: dict[str, Any],
+        keyword_results: dict[str, Any],
         semantic_weight: float
-    ) -> dict[str, any]:
+    ) -> dict[str, Any]:
         """合并搜索结果"""
         # 提取结果项
         semantic_items = semantic_results.get("items", [])

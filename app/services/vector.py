@@ -1,8 +1,6 @@
-import os
 import uuid
-import json
-import numpy as np
 from pymilvus import utility, connections, Collection, CollectionSchema, FieldSchema, DataType
+from typing import Any
 
 from app.services.embedding import embedding_service
 from app.core.logger import get_logger
@@ -37,9 +35,9 @@ class VectorService:
     def create_collection(
         self,
         name: str,
-        description: str = None,
-        embedding_dimension: int = None,
-        options: dict[str, any] = None
+        description: str | None = None,
+        embedding_dimension: int | None = None,
+        options: dict[str, Any] | None = None
     ):
         """
         创建向量集合
@@ -220,7 +218,7 @@ class VectorService:
             logger.error(f"Error creating vector collection: {e}")
             raise
     
-    def list_collections(self) -> list[any]:
+    def list_collections(self) -> list[Any]:
         """
         获取向量集合列表
         
@@ -233,7 +231,7 @@ class VectorService:
             logger.error(f"Error listing vector collections: {e}")
             raise
     
-    def get_collection_info(self, name: str) -> [dict[str, any]]:
+    def get_collection_info(self, name: str) -> dict[str, Any] | None:
         """
         获取向量集合信息
         
@@ -293,11 +291,11 @@ class VectorService:
     def ingest_vectors(
         self,
         collection_name: str,
-        items: list[dict[str, any]],
+        items: list[dict[str, Any]],
         embedding_model: str,
         batch_size: int = 100,
         upsert: bool = False
-    ) -> dict[str, any]:
+    ) -> dict[str, Any]:
         """
         批量导入向量数据
         
@@ -377,7 +375,7 @@ class VectorService:
     def ingest_vectors_async(
         self,
         collection_name: str,
-        items: list[dict[str, any]],
+        items: list[dict[str, Any]],
         embedding_model: str,
         batch_size: int = 100,
         upsert: bool = False
@@ -405,7 +403,7 @@ class VectorService:
         logger.info(f"Started async vector ingestion job: {job_id}")
         return job_id
     
-    def get_ingest_status(self, collection_name: str, job_id: str) -> [dict[str, any]]:
+    def get_ingest_status(self, collection_name: str, job_id: str) -> dict[str, Any]:
         """
         获取导入任务状态
         
@@ -428,7 +426,7 @@ class VectorService:
             "failed": 0
         }
     
-    def _prepare_items(self, items: list[dict[str, any]], embedding_model: str) -> list[dict[str, any]]:
+    def _prepare_items(self, items: list[dict[str, Any]], embedding_model: str) -> list[dict[str, Any]]:
         """
         准备向量数据
         
@@ -464,9 +462,9 @@ class VectorService:
         collection_name: str,
         query_vectors: list[list[float]],
         limit: int = 10,
-        expr: [str] = None,
-        output_fields: [list[str]] = None
-    ) -> list[list[dict[str, any]]]:
+        expr: str | None = None,
+        output_fields: list[str] | None = None
+    ) -> list[list[dict[str, Any]]]:
         """
         向量搜索
         
@@ -525,8 +523,8 @@ class VectorService:
         self,
         collection_name: str,
         ids: list[int],
-        output_fields: [list[str]] = None
-    ) -> list[dict[str, any]]:
+        output_fields: list[str] | None = None
+    ) -> list[dict[str, Any]]:
         """
         根据ID获取向量数据
         

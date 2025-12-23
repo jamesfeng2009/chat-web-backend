@@ -1,6 +1,7 @@
 import re
 import json
 import uuid
+from typing import Any, Tuple
 
 from dataclasses import dataclass
 from enum import Enum
@@ -72,17 +73,17 @@ class Segment:
     block_type: str
     level: int
     page_num: int = 0
-    bbox: [Tuple[float, float, float, float]] = None
-    style: [dict[str, any]] = None
-    
+    bbox: Tuple[float, float, float, float] | None = None
+    style: dict[str, Any] | None = None
+
     # LLM标注结果
-    role: [SegmentRole] = None
-    region: [SegmentRegion] = None
-    nc_type: [SegmentNCType] = None
-    clause_number: [str] = None
-    boundary: [str] = None  # B/I/O标签
-    
-    def to_dict(self) -> dict[str, any]:
+    role: SegmentRole | None = None
+    region: SegmentRegion | None = None
+    nc_type: SegmentNCType | None = None
+    clause_number: str | None = None
+    boundary: str | None = None  # B/I/O标签
+
+    def to_dict(self) -> dict[str, Any]:
         """转换为字典"""
         return {
             "seg_id": self.seg_id,
@@ -113,8 +114,8 @@ class StructureService:
         db: Session,
         document_id: str,
         structure_type: str = "auto",
-        options: dict[str, any] = None
-    ) -> dict[str, any]:
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         结构化文档
         
@@ -183,6 +184,7 @@ class StructureService:
             document_service.update_document_status(
                 db=db,
                 document_id=document_id,
+                status="completed",
                 structure_status="completed"
             )
             
@@ -194,11 +196,12 @@ class StructureService:
             document_service.update_document_status(
                 db=db,
                 document_id=document_id,
+                status="failed",
                 structure_status="failed"
             )
             raise
     
-    def get_structure_result(self, db: Session, document_id: str) -> [dict[str, any]]:
+    def get_structure_result(self, db: Session, document_id: str) -> dict[str, Any] | None:
         """
         获取结构化结果
         
@@ -231,7 +234,7 @@ class StructureService:
             logger.error(f"Error getting structure result: {e}")
             return None
     
-    def get_document_sections(self, db: Session, document_id: str) -> list[dict[str, any]]:
+    def get_document_sections(self, db: Session, document_id: str) -> list[dict[str, Any]]:
         """
         获取文档的章节列表
         
@@ -266,7 +269,7 @@ class StructureService:
         document_id: str,
         skip: int = 0,
         limit: int = 100
-    ) -> dict[str, any]:
+    ) -> dict[str, Any]:
         """
         获取文档的条款列表
         
@@ -306,7 +309,7 @@ class StructureService:
             logger.error(f"Error getting document clauses: {e}")
             return {"items": [], "total": 0, "page": 1, "page_size": limit}
     
-    def get_clause_detail(self, db: Session, clause_id: str) -> [dict[str, any]]:
+    def get_clause_detail(self, db: Session, clause_id: str) -> dict[str, Any] | None:
         """
         获取条款详情（包含子项）
         
@@ -360,13 +363,13 @@ class StructureService:
             logger.error(f"Error getting clause detail: {e}")
             return None
     
-    def _get_parse_result(self, db: Session, document_id: str) -> [dict[str, any]]:
+    def _get_parse_result(self, db: Session, document_id: str) -> dict[str, Any] | None:
         """获取解析结果"""
         # 这里可以从数据库或文件系统中获取已保存的解析结果
         # 为了简化，这里返回None，实际实现中应该从解析结果存储中获取
         return None
     
-    def _create_segments(self, document_id: str, blocks: list[dict[str, any]]) -> list[Segment]:
+    def _create_segments(self, document_id: str, blocks: list[dict[str, Any]]) -> list[Segment]:
         """创建段落"""
         segments = []
         
@@ -502,14 +505,14 @@ class StructureService:
         
         return SegmentNCType.MAIN_OTHER
     
-    def _extract_clause_number(self, text: str) -> [str]:
+    def _extract_clause_number(self, text: str) -> str | None:
         """提取条款编号"""
         match = re.search(r'第([一二三四五六七八九十\d]+)[条]', text)
         if match:
             return match.group(1)
         return None
     
-    def _detect_boundary(self, segment: Segment) -> [str]:
+    def _detect_boundary(self, segment: Segment) -> str | None:
         """检测边界标签"""
         if segment.role == SegmentRole.CLAUSE and segment.clause_number:
             return "B"  # Begin
@@ -518,7 +521,7 @@ class StructureService:
         else:
             return "O"  # Outside
     
-    def _create_sections(self, db: Session, document_id: str, segments: list[Segment]) -> list[dict[str, any]]:
+    def _create_sections(self, db: Session, document_id: str, segments: list[Segment]) -> list[dict[str, Any]]:
         """创建章节"""
         sections = []
         
@@ -547,7 +550,7 @@ class StructureService:
         
         return sections
     
-    def _create_clauses(self, db: Session, document_id: str, segments: list[Segment], sections: list[dict[str, any]]) -> list[dict[str, any]]:
+    def _create_clauses(self, db: Session, document_id: str, segments: list[Segment], sections: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """创建条款"""
         clauses = []
         
@@ -614,15 +617,12 @@ class StructureService:
         
         return clauses
     
-    def _create_clause_items(self, db: Session, clauses: list[dict[str, any]], segments: list[Segment]) -> list[dict[str, any]]:
+    def _create_clause_items(self, db: Session, clauses: list[dict[str, Any]], segments: list[Segment]) -> list[dict[str, Any]]:
         """创建子项"""
         clause_items = []
         
         # 找出所有子项段落
         item_segments = [s for s in segments if re.search(r'^[（\(][一二三四五六七八九十\d]+[）\)]|^[\d]+\.[\s]', s.text)]
-        
-        # 按条款分组
-        clause_map = {clause.get("id"): clause for clause in clauses}
         
         # 简单实现：根据顺序将子项分配给最近的条款
         for segment in item_segments:
@@ -636,9 +636,6 @@ class StructureService:
                     min_distance = distance
                     nearest_clause = clause
             
-            if not nearest_clause:
-                continue
-            
             # 提取子项标题
             title_match = re.search(r'^([（\(][一二三四五六七八九十\d]+[）\)]|[\d]+\.[\s])', segment.text)
             title = title_match.group(1) if title_match else ""
@@ -647,6 +644,9 @@ class StructureService:
             content = segment.text[len(title):].strip()
             
             # 创建子项
+            if not nearest_clause:
+                continue
+            
             item_data = ClauseItemCreate(
                 clause_id=nearest_clause.get("id"),
                 title=title,
@@ -668,7 +668,7 @@ class StructureService:
         
         return clause_items
     
-    def _create_paragraph_spans(self, db: Session, clauses: list[dict[str, any]], clause_items: list[dict[str, any]], segments: list[Segment]) -> list[dict[str, any]]:
+    def _create_paragraph_spans(self, db: Session, clauses: list[dict[str, Any]], clause_items: list[dict[str, Any]], segments: list[Segment]) -> list[dict[str, Any]]:
         """创建段落跨度"""
         paragraph_spans = []
         

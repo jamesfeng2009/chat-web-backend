@@ -1,23 +1,29 @@
-from typing import Generic, Type, TypeVar
+from typing import Generic, TypeVar, Any
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import Base
 
-ModelType = TypeVar("ModelType", bound=Base)
+# Base 是通过 declarative_base() 创建的有效类型
+# bound=Base 是 SQLAlchemy 的常见做法，用于约束 ModelType
+ModelType = TypeVar("ModelType", bound=Base)  # pyright: ignore[reportInvalidTypeForm]
+# CreateSchemaType is bound to BaseModel for backward compatibility
+# pyright: ignore[reportInvalidTypeForm]
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
 UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 
 
 class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
-    def __init__(self, model: Type[ModelType]):
+    model: type[ModelType]
+
+    def __init__(self, model: type[ModelType]) -> None:
         """
         CRUD object with default methods to Create, Read, Update, Delete (CRUD).
         """
         self.model = model
 
-    def get(self, db: Session, id: any) -> ModelType | None:
+    def get(self, db: Session, id: Any) -> ModelType | None:
         return db.query(self.model).filter(self.model.id == id, self.model.deleted == False).first()
 
     def get_multi(
@@ -31,8 +37,12 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             .all()
         )
 
-    def create(self, db: Session, *, obj_in: CreateSchemaType) -> ModelType:
-        obj_in_data = jsonable_encoder(obj_in)
+    def create(self, db: Session, *, obj_in: CreateSchemaType | dict[str, Any]) -> ModelType:
+        """Create a new object from either a Pydantic schema or dict."""
+        if isinstance(obj_in, dict):
+            obj_in_data = obj_in
+        else:
+            obj_in_data = jsonable_encoder(obj_in)
         db_obj = self.model(**obj_in_data)
         db.add(db_obj)
         db.commit()
@@ -44,7 +54,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db: Session,
         *,
         db_obj: ModelType,
-        obj_in: UpdateSchemaType | dict[str, any]
+        obj_in: UpdateSchemaType | dict[str, Any]
     ) -> ModelType:
         obj_data = jsonable_encoder(db_obj)
         if isinstance(obj_in, dict):

@@ -1,16 +1,17 @@
 from pydantic import BaseModel, Field
+from typing import Any
 
 from datetime import datetime
 
 
 class SectionBase(BaseModel):
-    title: [str] = Field(None, description="章节标题")
+    title: str | None = Field(None, description="章节标题")
     level: int = Field(..., description="大纲层级")
     order_index: int = Field(..., description="全局顺序")
-    loc: [dict[str, any]] = Field(None, description="定位信息")
-    role: [str] = Field(default="NON_CLAUSE", description="角色")
-    region: [str] = Field(None, description="区域")
-    nc_type: [str] = Field(None, description="非条款类型")
+    loc: dict[str, Any] | None = Field(None, description="定位信息")
+    role: str = Field(default="NON_CLAUSE", description="角色")
+    region: str | None = Field(None, description="区域")
+    nc_type: str | None = Field(None, description="非条款类型")
 
 
 class SectionCreate(SectionBase):
@@ -18,13 +19,13 @@ class SectionCreate(SectionBase):
 
 
 class SectionUpdate(BaseModel):
-    title: [str] = Field(None, description="章节标题")
-    level: [int] = Field(None, description="大纲层级")
-    order_index: [int] = Field(None, description="全局顺序")
-    loc: [dict[str, any]] = Field(None, description="定位信息")
-    role: [str] = Field(None, description="角色")
-    region: [str] = Field(None, description="区域")
-    nc_type: [str] = Field(None, description="非条款类型")
+    title: str | None = Field(None, description="章节标题")
+    level: int | None = Field(None, description="大纲层级")
+    order_index: int | None = Field(None, description="全局顺序")
+    loc: dict[str, Any] | None = Field(None, description="定位信息")
+    role: str | None = Field(None, description="角色")
+    region: str | None = Field(None, description="区域")
+    nc_type: str | None = Field(None, description="非条款类型")
 
 
 class SectionResponse(SectionBase):

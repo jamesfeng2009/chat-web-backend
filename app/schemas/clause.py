@@ -1,43 +1,44 @@
 from pydantic import BaseModel, Field
+from typing import Any
 
 from datetime import datetime
 
 
 class ClauseBase(BaseModel):
-    title: [str] = Field(None, description="条款标题")
+    title: str | None = Field(None, description="条款标题")
     order_index: int = Field(..., description="全局顺序")
     content: str = Field(..., description="条款内容")
     lang: str = Field(default="zh", description="文本语种")
-    loc: [dict[str, any]] = Field(None, description="定位信息")
-    role: [str] = Field(default="CLAUSE", description="角色")
-    region: [str] = Field(None, description="区域")
-    nc_type: [str] = Field(None, description="非条款类型")
-    metadata: [dict[str, any]] = Field(None, description="业务元数据")
+    loc: dict[str, Any] | None = Field(None, description="定位信息")
+    role: str = Field(default="CLAUSE", description="角色")
+    region: str | None = Field(None, description="区域")
+    nc_type: str | None = Field(None, description="非条款类型")
+    metadata: dict[str, Any] | None = Field(None, description="业务元数据")
 
 
 class ClauseCreate(ClauseBase):
     doc_id: str = Field(..., description="文档ID")
-    section_id: [str] = Field(None, description="章节ID")
+    section_id: str | None = Field(None, description="章节ID")
 
 
 class ClauseUpdate(BaseModel):
-    title: [str] = Field(None, description="条款标题")
-    order_index: [int] = Field(None, description="全局顺序")
-    content: [str] = Field(None, description="条款内容")
-    lang: [str] = Field(None, description="文本语种")
-    loc: [dict[str, any]] = Field(None, description="定位信息")
-    role: [str] = Field(None, description="角色")
-    region: [str] = Field(None, description="区域")
-    nc_type: [str] = Field(None, description="非条款类型")
-    metadata: [dict[str, any]] = Field(None, description="业务元数据")
+    title: str | None = Field(None, description="条款标题")
+    order_index: int | None = Field(None, description="全局顺序")
+    content: str | None = Field(None, description="条款内容")
+    lang: str | None = Field(None, description="文本语种")
+    loc: dict[str, Any] | None = Field(None, description="定位信息")
+    role: str | None = Field(None, description="角色")
+    region: str | None = Field(None, description="区域")
+    nc_type: str | None = Field(None, description="非条款类型")
+    metadata: dict[str, Any] | None = Field(None, description="业务元数据")
 
 
 class ClauseResponse(ClauseBase):
     id: str
     doc_id: str
-    section_id: [str]
-    embedding_id: [str]
-    embedding_dimension: [int]
+    section_id: str | None
+    embedding_id: str | None
+    embedding_dimension: int | None
     created_at: datetime
     updated_at: datetime
     deleted: bool

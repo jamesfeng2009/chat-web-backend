@@ -2,6 +2,7 @@
 文档处理服务
 整合文档路由、标注、结构化和向量化的完整流程
 """
+from typing import Any
 
 from datetime import datetime
 
@@ -13,10 +14,11 @@ from app.services.document_routing import DocumentRoutingService
 from app.services.labeling import LabelingService
 from app.services.document_structure import DocumentStructureService
 from app.services.vector_ingestion import VectorIngestionService
-from app.crud.document import document_crud
-from app.crud.section import section_crud
-from app.crud.clause import clause_crud
-from app.crud.clause_item import clause_item_crud
+from app.crud.document import crud_document
+from app.crud.section import crud_section
+from app.crud.clause import crud_clause
+from app.crud.clause_item import crud_clause_item
+from app.schemas.vector_ingestion import VectorIngestRequest, VectorIngestItem
 
 
 class DocumentProcessorService:
@@ -36,17 +38,21 @@ class DocumentProcessorService:
         self.structure_service = structure_service
         self.vector_service = vector_service
     
-    async def process_document(self, doc_data: dict[str, any]) -> dict[str, any]:
+    async def process_document(self, doc_data: dict[str, Any]) -> dict[str, Any]:
         """
         处理文档的完整流程
-        
+
         Args:
             doc_data: 包含文档信息的字典
-            
+
         Returns:
             处理结果
         """
         doc_id = doc_data.get("id")
+        if doc_id is None:
+            raise ValueError("Document ID is required")
+        assert isinstance(doc_id, str)
+
         logger.info(f"开始处理文档: {doc_id}")
         
         try:
@@ -78,10 +84,8 @@ class DocumentProcessorService:
             
             # 步骤6: 向量化并入库
             logger.info(f"向量化并入库: {doc_id}")
-            vector_result = await self.vector_service.ingest_document_vectors(
-                doc_id, structured_data
-            )
-            
+            vector_result = await self._vectorize_structured_data(doc_id, structured_data)
+
             # 更新文档向量状态
             vector_status = "completed" if vector_result.get("success") else "failed"
             await self._update_document_status(doc_id, vector_status=vector_status)
@@ -117,12 +121,15 @@ class DocumentProcessorService:
                 "error": str(e)
             }
     
-    async def _create_document_record(self, doc_data: dict[str, any]) -> any:
+    async def _create_document_record(self, doc_data: dict[str, Any]) -> Any:
         """创建文档记录"""
         doc_id = doc_data.get("id")
-        
+        if doc_id is None:
+            raise ValueError("Document ID is required")
+        assert isinstance(doc_id, str)
+
         # 检查文档是否已存在
-        existing_doc = document_crud.get(self.db, id=doc_id)
+        existing_doc = crud_document.get(self.db, id=doc_id)
         if existing_doc:
             logger.info(f"文档已存在: {doc_id}")
             return existing_doc
@@ -142,17 +149,17 @@ class DocumentProcessorService:
             "vector_status": "pending"
         }
         
-        document = document_crud.create(self.db, obj_in=document_data)
+        document = crud_document.create(self.db, obj_in=document_data)
         logger.info(f"创建文档记录: {doc_id}")
         return document
     
     async def _update_document_status(
-        self, 
-        doc_id: str, 
-        status: [str] = None,
-        parse_status: [str] = None,
-        structure_status: [str] = None,
-        vector_status: [str] = None
+        self,
+        doc_id: str,
+        status: str | None = None,
+        parse_status: str | None = None,
+        structure_status: str | None = None,
+        vector_status: str | None = None
     ):
         """更新文档状态"""
         update_data = {}
@@ -166,10 +173,12 @@ class DocumentProcessorService:
             update_data["vector_status"] = vector_status
         
         if update_data:
-            document_crud.update(self.db, db_obj_id=doc_id, obj_in=update_data)
+            document = crud_document.get(self.db, id=doc_id)
+            if document:
+                crud_document.update(self.db, db_obj=document, obj_in=update_data)
             logger.info(f"更新文档状态: {doc_id}, {update_data}")
     
-    async def _save_structured_data(self, doc_id: str, structured_data: dict[str, any]):
+    async def _save_structured_data(self, doc_id: str, structured_data: dict[str, Any]):
         """保存结构化数据到数据库"""
         sections = structured_data.get("sections", [])
         clauses = structured_data.get("clauses", [])
@@ -178,16 +187,16 @@ class DocumentProcessorService:
         # 保存sections
         for section_data in sections:
             section_data["doc_id"] = doc_id
-            section_crud.create(self.db, obj_in=section_data)
-        
+            crud_section.create(self.db, obj_in=section_data)
+
         # 保存clauses
         for clause_data in clauses:
             clause_data["doc_id"] = doc_id
-            clause_crud.create(self.db, obj_in=clause_data)
-        
+            crud_clause.create(self.db, obj_in=clause_data)
+
         # 保存clause_items
         for item_data in clause_items:
-            clause_item_crud.create(self.db, obj_in=item_data)
+            crud_clause_item.create(self.db, obj_in=item_data)
         
         # 更新结构化状态
         await self._update_document_status(doc_id, structure_status="completed")
@@ -197,7 +206,7 @@ class DocumentProcessorService:
                    f"clauses: {len(clauses)}, "
                    f"clause_items: {len(clause_items)}")
     
-    async def reprocess_document(self, doc_id: str) -> dict[str, any]:
+    async def reprocess_document(self, doc_id: str) -> dict[str, Any]:
         """
         重新处理文档
         
@@ -211,7 +220,7 @@ class DocumentProcessorService:
         
         try:
             # 获取文档信息
-            document = document_crud.get(self.db, id=doc_id)
+            document = crud_document.get(self.db, id=doc_id)
             if not document:
                 return {
                     "success": False,
@@ -252,17 +261,114 @@ class DocumentProcessorService:
     async def _delete_structured_data(self, doc_id: str):
         """删除结构化数据"""
         # 删除clause_items
-        clause_item_crud.delete_by_doc_id(self.db, doc_id=doc_id)
-        
+        crud_clause_item.delete_by_doc_id(self.db, doc_id=doc_id)
+
         # 删除clauses
-        clause_crud.delete_by_doc_id(self.db, doc_id=doc_id)
-        
+        crud_clause.delete_by_doc_id(self.db, doc_id=doc_id)
+
         # 删除sections
-        section_crud.delete_by_doc_id(self.db, doc_id=doc_id)
-        
+        crud_section.delete_by_doc_id(self.db, doc_id=doc_id)
+
         logger.info(f"删除结构化数据完成: {doc_id}")
-    
-    async def get_document_processing_status(self, doc_id: str) -> dict[str, any]:
+
+    async def _vectorize_structured_data(self, doc_id: str, structured_data: dict[str, Any]) -> dict[str, Any]:
+        """
+        向量化结构化数据
+
+        Args:
+            doc_id: 文档ID
+            structured_data: 结构化数据，包含sections、clauses和clause_items
+
+        Returns:
+            向量化结果
+        """
+
+        sections = structured_data.get("sections", [])
+        clauses = structured_data.get("clauses", [])
+        clause_items = structured_data.get("clause_items", [])
+
+        # 获取文档名称（假设从doc_data或使用doc_id）
+        doc_name = f"document_{doc_id}"
+
+        # 转换为VectorIngestItem列表
+        ingest_items: list[VectorIngestItem] = []
+
+        # 添加sections
+        for section in sections:
+            ingest_items.append(VectorIngestItem(
+                unit_type="SECTION",
+                doc_id=doc_id,
+                doc_name=doc_name,
+                section_id=section.get("id"),
+                section_title=section.get("title"),
+                section_level=section.get("level"),
+                content=section.get("content", ""),
+                role="NON_CLAUSE",
+                region=section.get("region", "MAIN"),
+                loc=section.get("loc")
+            ))
+
+        # 添加clauses
+        for clause in clauses:
+            ingest_items.append(VectorIngestItem(
+                unit_type="CLAUSE",
+                doc_id=doc_id,
+                doc_name=doc_name,
+                section_id=clause.get("section_id"),
+                section_title=clause.get("section_title"),
+                section_level=clause.get("section_level"),
+                clause_id=clause.get("id"),
+                clause_title=clause.get("title"),
+                clause_order_index=clause.get("order_index"),
+                content=clause.get("content", ""),
+                role="CLAUSE",
+                region=clause.get("region", "MAIN"),
+                nc_type=clause.get("nc_type"),
+                score=clause.get("score"),
+                loc=clause.get("loc"),
+                biz_tags=clause.get("biz_tags")
+            ))
+
+        # 添加clause_items
+        for item in clause_items:
+            ingest_items.append(VectorIngestItem(
+                unit_type="CLAUSE_ITEM",
+                doc_id=doc_id,
+                doc_name=doc_name,
+                section_id=item.get("section_id"),
+                section_title=item.get("section_title"),
+                section_level=item.get("section_level"),
+                clause_id=item.get("clause_id"),
+                clause_title=item.get("clause_title"),
+                clause_order_index=item.get("clause_order_index"),
+                item_id=item.get("id"),
+                parent_item_id=item.get("parent_item_id"),
+                item_order_index=item.get("order_index"),
+                content=item.get("content", ""),
+                role=item.get("role", "CLAUSE"),
+                region=item.get("region", "MAIN"),
+                nc_type=item.get("nc_type"),
+                score=item.get("score"),
+                loc=item.get("loc"),
+                biz_tags=item.get("biz_tags")
+            ))
+
+        if not ingest_items:
+            return {"success": True, "message": "没有需要向量化的数据"}
+
+        # 构建请求对象
+        request = VectorIngestRequest(
+            embedding_model="text-embedding-3-large",
+            items=ingest_items
+        )
+
+        # 调用向量摄入服务
+        return await self.vector_service.ingest_items_to_collection(
+            collection_name="mirrors_clause_vectors",
+            request=request
+        )
+
+    async def get_document_processing_status(self, doc_id: str) -> dict[str, Any]:
         """
         获取文档处理状态
         
@@ -273,7 +379,7 @@ class DocumentProcessorService:
             处理状态
         """
         try:
-            document = document_crud.get(self.db, id=doc_id)
+            document = crud_document.get(self.db, id=doc_id)
             if not document:
                 return {
                     "success": False,
@@ -281,9 +387,9 @@ class DocumentProcessorService:
                 }
             
             # 获取结构化数据统计
-            sections_count = section_crud.count_by_doc_id(self.db, doc_id=doc_id)
-            clauses_count = clause_crud.count_by_doc_id(self.db, doc_id=doc_id)
-            clause_items_count = clause_item_crud.count_by_doc_id(self.db, doc_id=doc_id)
+            sections_count = crud_section.count_by_doc_id(self.db, doc_id=doc_id)
+            clauses_count = crud_clause.count_by_doc_id(self.db, doc_id=doc_id)
+            clause_items_count = crud_clause_item.count_by_doc_id(self.db, doc_id=doc_id)
             
             return {
                 "success": True,

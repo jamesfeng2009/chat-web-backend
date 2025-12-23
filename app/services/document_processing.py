@@ -3,6 +3,7 @@
 整合三管线LLM标注服务和向量摄入服务
 """
 import asyncio
+from typing import Any
 
 from app.core.logger import get_logger
 
@@ -23,7 +24,7 @@ class DocumentProcessingService:
         self.vector_service = VectorIngestionService(embedding_service)
         self.doc_structure_service = DocumentStructureService()
     
-    def _parse_document_content(self, document_content: str) -> dict:
+    def _parse_document_content(self, document_content: str) -> dict[str, Any]:
         """
         解析文档内容，提取段落
         
@@ -60,7 +61,7 @@ class DocumentProcessingService:
         collection_name: str = "mirrors_clause_vectors",
         lang: str = "zh",
         score_threshold: str = "1"
-    ) -> dict[str, any]:
+    ) -> dict[str, Any]:
         """
         处理文档：解析结构、LLM标注、向量化和存储
         
@@ -170,7 +171,7 @@ class DocumentProcessingService:
     
     def _prepare_ingest_items(
         self,
-        clause_units: list[dict[str, any]],
+        clause_units: list[dict[str, Any]],
         doc_id: str,
         doc_name: str,
         lang: str
@@ -227,7 +228,7 @@ class DocumentProcessingService:
         doc_id: str,
         doc_name: str,
         lang: str = "zh"
-    ) -> dict[str, any]:
+    ) -> dict[str, Any]:
         """
         仅进行文档标注，不执行向量化和存储
         
@@ -289,7 +290,7 @@ class DocumentProcessingService:
         ingest_items: list[VectorIngestItem],
         embedding_model: str = "text-embedding-3-large",
         collection_name: str = "mirrors_clause_vectors"
-    ) -> dict[str, any]:
+    ) -> dict[str, Any]:
         """
         向量化并存储预先准备好的条款项
         
@@ -348,10 +349,10 @@ class DocumentProcessingService:
     async def process_document_v1(
         self,
         doc_id: str,
-        segments: list[dict[str, any]],
-        metadata: dict[str, any],
-        options: [dict[str, any]] = None
-    ) -> dict[str, any]:
+        segments: list[dict[str, Any]],
+        metadata: dict[str, Any],
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         处理文档 (v1格式 - 从原始段落开始)
         向后兼容方法，转换为新的处理流程
@@ -402,10 +403,10 @@ class DocumentProcessingService:
     async def process_document_v2(
         self,
         doc_id: str,
-        structure_data: dict[str, any],
-        metadata: dict[str, any],
-        options: [dict[str, any]] = None
-    ) -> dict[str, any]:
+        structure_data: dict[str, Any],
+        metadata: dict[str, Any],
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         处理文档 (v2格式 - 从预结构化数据开始)
         向后兼容方法，转换为新的处理流程
@@ -453,7 +454,7 @@ class DocumentProcessingService:
                 "data": {}
             }
     
-    def _convert_structure_to_text(self, structure_data: dict[str, any]) -> str:
+    def _convert_structure_to_text(self, structure_data: dict[str, Any]) -> str:
         """
         将结构化数据转换为纯文本
         
@@ -491,11 +492,11 @@ class DocumentProcessingService:
         
         return "\n\n".join(text_parts)
     
-    def process_with_clause_chunking(self, content: bytes, file_type: str, doc_id: str, doc_name: str, 
+    async def process_with_clause_chunking(self, content: bytes, file_type: str, doc_id: str, doc_name: str,
                                  mode: str = "contract", use_cross_encoder: bool = False,
                                  embedding_model: str = "text-embedding-3-large",
                                  collection_name: str = "mirrors_clause_vectors",
-                                 lang: str = "zh") -> dict[str, any]:
+                                 lang: str = "zh") -> dict[str, Any]:
         """
         使用条款切分算法处理文档
         
@@ -659,7 +660,7 @@ class DocumentProcessingService:
     
     def _prepare_ingest_items_from_chunks(
         self,
-        labeled_segments: list[dict[str, any]],
+        labeled_segments: list[dict[str, Any]],
         chunk_spans: list[list[int]],
         chunk_texts: list[str],
         doc_id: str,

@@ -11,6 +11,7 @@ from io import BytesIO
 import fitz  # PyMuPDF for PDF
 from docx import Document as DocxDocument
 import pandas as pd
+from typing import Any
 
 from app.core.logger import logger
 from app.services.storage import StorageService
@@ -22,7 +23,7 @@ class DocumentRoutingService:
     def __init__(self, storage_service: StorageService):
         self.storage_service = storage_service
     
-    def route_and_parse(self, doc_data: dict[str, any]) -> dict[str, any]:
+    def route_and_parse(self, doc_data: dict[str, Any]) -> dict[str, Any]:
         """
         路由文档解析流程
         
@@ -40,6 +41,8 @@ class DocumentRoutingService:
             解析后的文档内容，包括文本段落和元数据
         """
         doc_id = doc_data.get("id")
+        if not isinstance(doc_id, str):
+            doc_id = ""
         title = doc_data.get("title", "")
         doc_type = doc_data.get("type", "")
         created_at = doc_data.get("created_at")
@@ -52,6 +55,8 @@ class DocumentRoutingService:
             logger.info(f"Processing rich content for document {doc_id}")
             content = rich_content
             file_type = self._detect_content_type(content)
+            if file_type is None:
+                file_type = "text"
             raw_text, metadata = self._parse_content_by_type(content, file_type)
         elif file_url:
             logger.info(f"Downloading and processing document from URL: {file_url}")
@@ -59,6 +64,8 @@ class DocumentRoutingService:
                 # 下载文件
                 downloaded_content, file_type = self._download_file(file_url, doc_id)
                 # 解析文件
+                if file_type is None:
+                    file_type = "txt"
                 raw_text, metadata = self._parse_file_by_type(downloaded_content, file_type)
             except Exception as e:
                 logger.error(f"Failed to download or parse file from URL: {str(e)}")
@@ -93,7 +100,7 @@ class DocumentRoutingService:
             "metadata": document_metadata
         }
     
-    def _detect_content_type(self, content: str) -> [str]:
+    def _detect_content_type(self, content: str) -> str | None:
         """检测富文本内容的类型"""
         if content.strip().startswith("<!DOCTYPE") or content.strip().startswith("<html"):
             return "html"
@@ -102,7 +109,7 @@ class DocumentRoutingService:
         else:
             return "text"
     
-    def _download_file(self, file_url: str, doc_id: str) -> Tuple[bytes, str]:
+    def _download_file(self, file_url: str, doc_id: str) -> tuple[bytes, str | None]:
         """下载文件并返回文件内容和类型"""
         try:
             response = requests.get(file_url, stream=True, timeout=30)
@@ -144,7 +151,7 @@ class DocumentRoutingService:
             logger.error(f"Failed to download file from {file_url}: {str(e)}")
             raise
     
-    def _parse_content_by_type(self, content: str, file_type: str) -> Tuple[str, Dict]:
+    def _parse_content_by_type(self, content: str, file_type: str) -> tuple[str, dict[str, Any]]:
         """根据内容类型解析内容"""
         if file_type == "html":
             return self._parse_html(content)
@@ -152,7 +159,7 @@ class DocumentRoutingService:
             # 对于纯文本，直接返回
             return content, {}
     
-    def _parse_file_by_type(self, content: bytes, file_type: str) -> Tuple[str, Dict]:
+    def _parse_file_by_type(self, content: bytes, file_type: str) -> tuple[str, dict[str, Any]]:
         """根据文件类型解析文件"""
         try:
             if file_type == "pdf":
@@ -169,7 +176,7 @@ class DocumentRoutingService:
             logger.error(f"Failed to parse {file_type} file: {str(e)}")
             raise
     
-    def _parse_pdf(self, content: bytes) -> Tuple[str, Dict]:
+    def _parse_pdf(self, content: bytes) -> tuple[str, dict[str, Any]]:
         """解析PDF文件"""
         doc = fitz.open(stream=content, filetype="pdf")
         text_parts = []
@@ -182,7 +189,7 @@ class DocumentRoutingService:
         doc.close()
         return "\n".join(text_parts), metadata
     
-    def _parse_docx(self, content: bytes) -> Tuple[str, Dict]:
+    def _parse_docx(self, content: bytes) -> tuple[str, dict[str, Any]]:
         """解析DOCX文件"""
         doc = DocxDocument(BytesIO(content))
         text_parts = []
@@ -208,7 +215,7 @@ class DocumentRoutingService:
         
         return "\n".join(all_text), metadata
     
-    def _parse_xlsx(self, content: bytes) -> Tuple[str, Dict]:
+    def _parse_xlsx(self, content: bytes) -> tuple[str, dict[str, Any]]:
         """解析XLSX文件"""
         excel_file = BytesIO(content)
         sheets = pd.read_excel(excel_file, sheet_name=None)
@@ -222,7 +229,7 @@ class DocumentRoutingService:
         
         return "\n\n".join(text_parts), metadata
     
-    def _parse_html(self, html_content: str) -> Tuple[str, Dict]:
+    def _parse_html(self, html_content: str) -> tuple[str, dict[str, Any]]:
         """解析HTML内容"""
         soup = BeautifulSoup(html_content, 'html.parser')
         
@@ -271,7 +278,7 @@ class DocumentRoutingService:
         
         return "文档"
     
-    def _segment_text(self, text: str) -> list[dict]:
+    def _segment_text(self, text: str) -> list[dict[str, Any]]:
         """将文本分割成段落片段"""
         # 简单的段落分割
         lines = text.split('\n')

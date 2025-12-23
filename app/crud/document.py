@@ -7,7 +7,7 @@ from app.schemas.document import DocumentCreate, DocumentUpdate
 
 
 class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
-    def get_by_checksum(self, db: Session, checksum: str) -> [Document]:
+    def get_by_checksum(self, db: Session, checksum: str) -> Document | None:
         """
         根据校验和获取文档
         """
@@ -18,7 +18,7 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
             )
         ).first()
 
-    def get_by_name(self, db: Session, name: str) -> [Document]:
+    def get_by_name(self, db: Session, name: str) -> Document | None:
         """
         根据名称获取文档
         """
@@ -30,13 +30,13 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
         ).first()
 
     def get_multi_by_owner(
-        self, 
-        db: Session, 
-        *, 
-        owner_id: [str] = None,
-        skip: int = 0, 
+        self,
+        db: Session,
+        *,
+        owner_id: str | None = None,
+        skip: int = 0,
         limit: int = 100,
-        status: [str] = None
+        status: str | None = None
     ) -> list[Document]:
         """
         获取多个文档，支持所有者过滤和状态过滤
@@ -128,14 +128,14 @@ class CRUDDocument(CRUDBase[Document, DocumentCreate, DocumentUpdate]):
         )
 
     def update_status(
-        self, 
-        db: Session, 
-        *, 
+        self,
+        db: Session,
+        *,
         db_obj: Document,
         status: str,
-        parse_status: [str] = None,
-        structure_status: [str] = None,
-        vector_status: [str] = None
+        parse_status: str | None = None,
+        structure_status: str | None = None,
+        vector_status: str | None = None
     ) -> Document:
         """
         更新文档状态

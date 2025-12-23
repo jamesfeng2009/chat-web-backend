@@ -1,5 +1,6 @@
 import os
 import uuid
+from typing import Any
 from sqlalchemy.orm import Session
 
 from app.crud.document import crud_document
@@ -23,8 +24,8 @@ class DocumentService:
         file_name: str,
         content_type: str,
         ingest_channel: str = "upload",
-        metadata: [dict[str, any]] = None
-    ) -> dict[str, any]:
+        metadata: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         上传文档
         
@@ -50,6 +51,8 @@ class DocumentService:
             
             # 检查是否已存在相同校验和的文档
             checksum = file_ref.get("checksum")
+            if checksum is None:
+                checksum = ""
             existing_doc = crud_document.get_by_checksum(db, checksum=checksum)
             
             if existing_doc:
@@ -105,7 +108,7 @@ class DocumentService:
             raise
     
     @staticmethod
-    def get_document(db: Session, document_id: str) -> [dict[str, any]]:
+    def get_document(db: Session, document_id: str) -> dict[str, Any] | None:
         """
         获取文档信息
         
@@ -141,9 +144,9 @@ class DocumentService:
         db: Session,
         skip: int = 0,
         limit: int = 100,
-        status: [str] = None,
-        owner_id: [str] = None
-    ) -> dict[str, any]:
+        status: str | None = None,
+        owner_id: str | None = None
+    ) -> dict[str, Any]:
         """
         获取文档列表
         
@@ -201,8 +204,8 @@ class DocumentService:
     def update_document(
         db: Session,
         document_id: str,
-        update_data: dict[str, any]
-    ) -> [dict[str, any]]:
+        update_data: dict[str, Any]
+    ) -> dict[str, Any] | None:
         """
         更新文档信息
         
@@ -238,9 +241,9 @@ class DocumentService:
         db: Session,
         document_id: str,
         status: str,
-        parse_status: [str] = None,
-        structure_status: [str] = None,
-        vector_status: [str] = None
+        parse_status: str | None = None,
+        structure_status: str | None = None,
+        vector_status: str | None = None
     ) -> bool:
         """
         更新文档状态
@@ -297,7 +300,7 @@ class DocumentService:
         return True
     
     @staticmethod
-    def get_file_content(db: Session, document_id: str) -> [bytes]:
+    def get_file_content(db: Session, document_id: str) -> bytes | None:
         """
         获取文档文件内容
         
@@ -324,7 +327,7 @@ class DocumentService:
         keyword: str,
         skip: int = 0,
         limit: int = 100
-    ) -> dict[str, any]:
+    ) -> dict[str, Any]:
         """
         搜索文档
         

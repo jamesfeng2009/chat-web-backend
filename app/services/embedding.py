@@ -5,6 +5,7 @@ import hashlib
 import openai
 import numpy as np
 from text2vec import SentenceModel
+from typing import Any
 
 from app.core.config import settings
 from app.core.logger import get_logger
@@ -64,7 +65,7 @@ class EmbeddingService:
         """获取文本哈希"""
         return hashlib.md5(text.encode("utf-8")).hexdigest()
     
-    def embed_text(self, text: str, model_name: str = None) -> list[float]:
+    def embed_text(self, text: str, model_name: str | None = None) -> list[float]:
         """
         对单个文本进行向量化
         
@@ -92,7 +93,7 @@ class EmbeddingService:
         else:
             raise ValueError(f"Unsupported provider: {provider}")
     
-    def embed_texts(self, texts: list[str], model_name: str = None) -> list[list[float]]:
+    def embed_texts(self, texts: list[str], model_name: str | None = None) -> list[list[float]]:
         """
         对多个文本进行批量向量化
         
@@ -120,7 +121,7 @@ class EmbeddingService:
         else:
             raise ValueError(f"Unsupported provider: {provider}")
     
-    def _embed_with_openai(self, text: str, model_name: str, config: dict[str, any]) -> list[float]:
+    def _embed_with_openai(self, text: str, model_name: str, config: dict[str, Any]) -> list[float]:
         """使用OpenAI进行向量化"""
         try:
             response = openai.Embedding.create(
@@ -132,7 +133,7 @@ class EmbeddingService:
             logger.error(f"Error embedding text with OpenAI: {e}")
             raise
     
-    def _embed_batch_with_openai(self, texts: list[str], model_name: str, config: dict[str, any]) -> list[list[float]]:
+    def _embed_batch_with_openai(self, texts: list[str], model_name: str, config: dict[str, Any]) -> list[list[float]]:
         """使用OpenAI进行批量向量化"""
         try:
             response = openai.Embedding.create(
@@ -144,7 +145,7 @@ class EmbeddingService:
             logger.error(f"Error embedding texts with OpenAI: {e}")
             raise
     
-    def _embed_with_local(self, text: str, model_name: str, config: dict[str, any]) -> list[float]:
+    def _embed_with_local(self, text: str, model_name: str, config: dict[str, Any]) -> list[float]:
         """使用本地模型进行向量化"""
         try:
             model = self._get_local_model(model_name)
@@ -154,7 +155,7 @@ class EmbeddingService:
             logger.error(f"Error embedding text with local model: {e}")
             raise
     
-    def _embed_batch_with_local(self, texts: list[str], model_name: str, config: dict[str, any]) -> list[list[float]]:
+    def _embed_batch_with_local(self, texts: list[str], model_name: str, config: dict[str, Any]) -> list[list[float]]:
         """使用本地模型进行批量向量化"""
         try:
             model = self._get_local_model(model_name)
@@ -164,7 +165,7 @@ class EmbeddingService:
             logger.error(f"Error embedding texts with local model: {e}")
             raise
     
-    def get_model_dimension(self, model_name: str = None) -> int:
+    def get_model_dimension(self, model_name: str | None = None) -> int:
         """
         获取模型向量维度
         
@@ -178,9 +179,10 @@ class EmbeddingService:
             model_name = settings.EMBEDDING_MODEL
         
         config = self.model_configs.get(model_name, {})
-        return config.get("dimension", 1536)
+        dimension = config.get("dimension", 1536)
+        return int(dimension) if isinstance(dimension, int) else 1536
     
-    def get_model_info(self, model_name: str = None) -> dict[str, any]:
+    def get_model_info(self, model_name: str | None = None) -> dict[str, Any]:
         """
         获取模型信息
         

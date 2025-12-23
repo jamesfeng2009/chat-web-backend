@@ -1,3 +1,4 @@
+from typing import Text
 from sqlalchemy import Column, String, Integer, JSON, ForeignKey
 from sqlalchemy.orm import relationship
 

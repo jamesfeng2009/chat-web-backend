@@ -1,5 +1,6 @@
 import re
 import json
+from typing import Any, Tuple
 
 from dataclasses import dataclass
 from enum import Enum
@@ -52,13 +53,13 @@ class ClauseCategory(Enum):
 @dataclass
 class ClassificationResult:
     """分类结果"""
-    document_type: [DocumentType] = None
+    document_type: DocumentType | None = None
     document_type_confidence: float = 0.0
-    contract_domain: [ContractDomain] = None
+    contract_domain: ContractDomain | None = None
     contract_domain_confidence: float = 0.0
-    clause_categories: list[Tuple[ClauseCategory, float]] = None
-    
-    def to_dict(self) -> dict[str, any]:
+    clause_categories: list[Tuple[ClauseCategory, float]] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
         """转换为字典"""
         return {
             "document_type": {
@@ -318,7 +319,7 @@ class ClassificationService:
     def extract_business_tags(
         self,
         text: str,
-        tag_types: list[str] = None
+        tag_types: list[str] | None = None
     ) -> dict[str, list[str]]:
         """
         提取业务标签

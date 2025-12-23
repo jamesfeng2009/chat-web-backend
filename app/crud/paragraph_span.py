@@ -105,11 +105,11 @@ class CRUDParagraphSpan(CRUDBase[ParagraphSpan, ParagraphSpanCreate, ParagraphSp
         )
     
     def get_by_document(
-        self, 
-        db: Session, 
-        *, 
+        self,
+        db: Session,
+        *,
         doc_id: str,
-        owner_type: [str] = None,
+        owner_type: str | None = None,
         skip: int = 0,
         limit: int = 100
     ) -> list[ParagraphSpan]:
@@ -262,13 +262,13 @@ class CRUDParagraphSpan(CRUDBase[ParagraphSpan, ParagraphSpanCreate, ParagraphSp
         return db_objs
 
     def update_labels(
-        self, 
-        db: Session, 
-        *, 
+        self,
+        db: Session,
+        *,
         db_obj: ParagraphSpan,
-        role: [str] = None,
-        region: [str] = None,
-        nc_type: [str] = None
+        role: str | None = None,
+        region: str | None = None,
+        nc_type: str | None = None
     ) -> ParagraphSpan:
         """
         更新段落的标签信息

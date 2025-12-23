@@ -5,7 +5,7 @@ import sys
 from app.core.config import settings
 
 
-def get_logger(name: [str] = None) -> logging.Logger:
+def get_logger(name: str | None = None) -> logging.Logger:
     """
     获取配置好的日志记录器
     """
@@ -16,11 +16,12 @@ def get_logger(name: [str] = None) -> logging.Logger:
         return logger
     
     # 设置日志级别
-    logger.setLevel(getattr(logging, settings.LOG_LEVEL.upper()))
-    
+    log_level: int = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
+    logger.setLevel(log_level)
+
     # 创建控制台处理器
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(getattr(logging, settings.LOG_LEVEL.upper()))
+    console_handler.setLevel(log_level)
     
     # 创建格式化器
     formatter = logging.Formatter(settings.LOG_FORMAT)

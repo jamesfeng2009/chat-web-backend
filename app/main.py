@@ -25,9 +25,10 @@ app = FastAPI(
 )
 
 # 设置CORS
+origins = settings.BACKEND_CORS_ORIGINS if hasattr(settings, "BACKEND_CORS_ORIGINS") else ["http://localhost:3000", "http://localhost:8080"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 生产环境应设置具体域名
+    allow_origins=origins,  # 从配置读取，避免允许所有来源
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -43,7 +44,7 @@ async def health_check():
 
 
 if __name__ == "__main__":
-    import uvicorn
+    import uvicorn  # type: ignore
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",

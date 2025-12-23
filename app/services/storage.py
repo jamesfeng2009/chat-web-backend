@@ -1,5 +1,6 @@
 import os
 import hashlib
+from typing import Any, BinaryIO
 
 import json
 import uuid
@@ -86,12 +87,12 @@ class StorageService:
         return os.path.join("documents", dir_name, storage_file_name)
     
     def save_file(
-        self, 
-        file: BinaryIO, 
-        file_name: str, 
-        content_type: str = None,
-        metadata: [dict[str, any]] = None
-    ) -> dict[str, any]:
+        self,
+        file: BinaryIO,
+        file_name: str,
+        content_type: str | None = None,
+        metadata: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         保存文件
         
@@ -130,12 +131,12 @@ class StorageService:
             raise ValueError(f"Unsupported storage type: {self.storage_type}")
     
     def _save_file_local(
-        self, 
-        file: BinaryIO, 
-        file_name: str, 
+        self,
+        file: BinaryIO,
+        file_name: str,
         checksum: str,
-        file_ref: dict[str, any]
-    ) -> dict[str, any]:
+        file_ref: dict[str, Any]
+    ) -> dict[str, Any]:
         """本地存储文件"""
         file_path = self._generate_file_path(file_name, checksum)
         full_path = os.path.join(self.storage_path, file_path)
@@ -156,15 +157,16 @@ class StorageService:
         return file_ref
     
     def _save_file_minio(
-        self, 
-        file: BinaryIO, 
-        file_name: str, 
+        self,
+        file: BinaryIO,
+        file_name: str,
         checksum: str,
-        file_ref: dict[str, any],
-        content_type: str = None,
-        metadata: [dict[str, any]] = None
-    ) -> dict[str, any]:
+        file_ref: dict[str, Any],
+        content_type: str | None = None,
+        metadata: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """MinIO存储文件"""
+        assert self.minio_client is not None, "MinIO client not initialized"
         object_name = self._generate_file_path(file_name, checksum).replace("\\", "/")
         
         # 准备元数据
@@ -199,7 +201,7 @@ class StorageService:
             logger.error(f"Error saving file to MinIO: {e}")
             raise
     
-    def get_file(self, file_ref: dict[str, any]) -> bytes:
+    def get_file(self, file_ref: dict[str, Any]) -> bytes:
         """
         获取文件内容
         
@@ -218,7 +220,7 @@ class StorageService:
         else:
             raise ValueError(f"Unsupported storage type: {storage_type}")
     
-    def _get_file_local(self, file_ref: dict[str, any]) -> bytes:
+    def _get_file_local(self, file_ref: dict[str, Any]) -> bytes:
         """从本地存储获取文件"""
         file_path = file_ref.get("full_path")
         if not file_path or not os.path.exists(file_path):
@@ -227,8 +229,9 @@ class StorageService:
         with open(file_path, "rb") as f:
             return f.read()
     
-    def _get_file_minio(self, file_ref: dict[str, any]) -> bytes:
+    def _get_file_minio(self, file_ref: dict[str, Any]) -> bytes:
         """从MinIO获取文件"""
+        assert self.minio_client is not None, "MinIO client not initialized"
         object_name = file_ref.get("object_name")
         bucket_name = file_ref.get("bucket_name", self.minio_bucket_name)
         
@@ -242,7 +245,7 @@ class StorageService:
             logger.error(f"Error getting file from MinIO: {e}")
             raise
     
-    def delete_file(self, file_ref: dict[str, any]) -> bool:
+    def delete_file(self, file_ref: dict[str, Any]) -> bool:
         """
         删除文件
         
@@ -262,7 +265,7 @@ class StorageService:
             logger.warning(f"Unsupported storage type for deletion: {storage_type}")
             return False
     
-    def _delete_file_local(self, file_ref: dict[str, any]) -> bool:
+    def _delete_file_local(self, file_ref: dict[str, Any]) -> bool:
         """从本地存储删除文件"""
         file_path = file_ref.get("full_path")
         if not file_path:
@@ -278,8 +281,9 @@ class StorageService:
             logger.error(f"Error deleting local file: {e}")
             return False
     
-    def _delete_file_minio(self, file_ref: dict[str, any]) -> bool:
+    def _delete_file_minio(self, file_ref: dict[str, Any]) -> bool:
         """从MinIO删除文件"""
+        assert self.minio_client is not None, "MinIO client not initialized"
         object_name = file_ref.get("object_name")
         bucket_name = file_ref.get("bucket_name", self.minio_bucket_name)
         

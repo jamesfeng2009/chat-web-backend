@@ -5,6 +5,7 @@
 import json
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any
 
 from app.core.logger import logger
 from app.core.config import settings
@@ -181,7 +182,7 @@ class LabelingService:
         }
         """
     
-    def label_segments(self, segments: list[dict[str, any]]) -> list[dict[str, any]]:
+    def label_segments(self, segments: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
         对段落片段进行三管线标注
         
@@ -221,7 +222,7 @@ class LabelingService:
         
         return labeled_segments
     
-    def _merge_segments_with_positions(self, segments: list[dict[str, any]]) -> dict[str, any]:
+    def _merge_segments_with_positions(self, segments: list[dict[str, Any]]) -> dict[str, Any]:
         """合并段落并记录位置信息"""
         text_parts = []
         positions = []
@@ -251,7 +252,7 @@ class LabelingService:
             "positions": positions
         }
     
-    def _split_into_windows(self, text: str, positions: list[dict], window_size: int = 4000, overlap: int = 200) -> list[dict]:
+    def _split_into_windows(self, text: str, positions: list[dict[str, Any]], window_size: int = 4000, overlap: int = 200) -> list[dict[str, Any]]:
         """将文本分割为重叠的窗口"""
         windows = []
         text_len = len(text)
@@ -278,7 +279,7 @@ class LabelingService:
         
         return windows
     
-    def _process_region_pipeline(self, windows: list[dict]) -> list[dict]:
+    def _process_region_pipeline(self, windows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """处理区域标注管线"""
         results = []
         
@@ -319,7 +320,7 @@ class LabelingService:
         
         return results
     
-    def _process_nc_type_pipeline(self, windows: list[dict]) -> list[dict]:
+    def _process_nc_type_pipeline(self, windows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """处理非条款类型标注管线"""
         results = []
         
@@ -376,7 +377,7 @@ class LabelingService:
         
         return results
     
-    def _process_role_pipeline(self, windows: list[dict]) -> list[dict]:
+    def _process_role_pipeline(self, windows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """处理角色标注管线"""
         results = []
         
@@ -455,7 +456,7 @@ class LabelingService:
             # 角色标注
             return """{"spans": [{"start": 0, "end": 1000, "role": "NON_CLAUSE"}]}"""
     
-    def _parse_llm_response(self, response: str) -> list[dict]:
+    def _parse_llm_response(self, response: str) -> list[dict[str, Any]]:
         """解析LLM响应，提取spans"""
         try:
             # 尝试解析JSON
@@ -469,7 +470,7 @@ class LabelingService:
             logger.error(f"Failed to parse LLM response as JSON: {str(e)}")
             return []
     
-    def _find_span_label(self, spans: list[dict], start: int, end: int, label_key: str) -> any:
+    def _find_span_label(self, spans: list[dict[str, Any]], start: int, end: int, label_key: str) -> Any:
         """查找包含给定位置区间的span标签"""
         for span in spans:
             if span["start"] <= start and span["end"] >= end:
@@ -477,12 +478,12 @@ class LabelingService:
         return None
     
     def _merge_labeling_results(
-        self, 
-        segments: list[dict], 
-        region_results: list[dict], 
-        nc_type_results: list[dict], 
-        role_results: list[dict]
-    ) -> list[dict]:
+        self,
+        segments: list[dict[str, Any]],
+        region_results: list[dict[str, Any]],
+        nc_type_results: list[dict[str, Any]],
+        role_results: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         """合并三个管线的结果，计算加权分数"""
         # 创建segment_id到结果的映射
         region_map = {r["segment_id"]: r["region"] for r in region_results}
@@ -513,7 +514,7 @@ class LabelingService:
         
         return labeled_segments
     
-    def _calculate_confidence_score(self, region: str, nc_type: str, role: str) -> int:
+    def _calculate_confidence_score(self, region: str, nc_type: str | None, role: str) -> int:
         """根据三个维度的标签计算置信度分数"""
         score = 0
         

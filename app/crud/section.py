@@ -83,7 +83,7 @@ class CRUDSection(CRUDBase[Section, SectionCreate, SectionUpdate]):
         *, 
         doc_id: str,
         order_index: int
-    ) -> [Section]:
+    ) -> Section | None:
         """
         根据顺序获取章节
         """
@@ -123,9 +123,9 @@ class CRUDSection(CRUDBase[Section, SectionCreate, SectionUpdate]):
         return (max_order.order_index + 1) if max_order else 1
 
     def create_multiple(
-        self, 
-        db: Session, 
-        *, 
+        self,
+        db: Session,
+        *,
         objs_in: list[SectionCreate]
     ) -> list[Section]:
         """
@@ -136,12 +136,42 @@ class CRUDSection(CRUDBase[Section, SectionCreate, SectionUpdate]):
             db_obj = self.model(**obj_in.dict())
             db.add(db_obj)
             db_objs.append(db_obj)
-        
+
         db.commit()
         for db_obj in db_objs:
             db.refresh(db_obj)
-            
+
         return db_objs
+
+    def count_by_doc_id(self, db: Session, *, doc_id: str) -> int:
+        """
+        统计文档的章节数量
+        """
+        return (
+            db.query(self.model)
+            .filter(
+                and_(
+                    self.model.doc_id == doc_id,
+                    self.model.deleted == False
+                )
+            )
+            .count()
+        )
+
+    def delete_by_doc_id(self, db: Session, *, doc_id: str) -> int:
+        """
+        删除文档的所有章节（软删除）
+        """
+        return (
+            db.query(self.model)
+            .filter(
+                and_(
+                    self.model.doc_id == doc_id,
+                    self.model.deleted == False
+                )
+            )
+            .update({"deleted": True}, synchronize_session=False)
+        )
 
 
 crud_section = CRUDSection(Section)

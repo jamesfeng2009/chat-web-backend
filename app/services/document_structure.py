@@ -9,6 +9,7 @@ import uuid
 from dataclasses import dataclass
 from collections import defaultdict
 from datetime import datetime
+from typing import Any
 
 from app.core.logger import logger
 from app.schemas.document import DocumentCreate
@@ -22,16 +23,16 @@ class StructuredElement:
     """结构化元素的数据类"""
     id: str
     element_type: str  # section, clause, clause_item
-    parent_id: [str]
+    parent_id: str | None
     order_index: int
-    number_token: [str]
-    title: [str]
-    content: [str]
-    level_hint: [int]
-    loc: [dict]
+    number_token: str | None
+    title: str | None
+    content: str | None
+    level_hint: int | None
+    loc: dict[str, Any] | None
     role: str
     region: str
-    nc_type: [str]
+    nc_type: str | None
     score: int
 
 
@@ -72,7 +73,7 @@ class DocumentStructureService:
     
     # ===== V1 格式处理方法 =====
     
-    def structure_document(self, doc_id: str, labeled_segments: list[dict[str, any]]) -> dict[str, any]:
+    def structure_document(self, doc_id: str, labeled_segments: list[dict[str, Any]]) -> dict[str, Any]:
         """
         v1格式: 将标注后的段落结构化为section/clause/clause_item层次结构
         
@@ -108,7 +109,7 @@ class DocumentStructureService:
             "clause_items": clause_items
         }
     
-    def _extract_structured_elements(self, doc_id: str, labeled_segments: list[dict[str, any]]) -> list[StructuredElement]:
+    def _extract_structured_elements(self, doc_id: str, labeled_segments: list[dict[str, Any]]) -> list[StructuredElement]:
         """从标注段落中提取结构化元素"""
         elements = []
         
@@ -201,7 +202,7 @@ class DocumentStructureService:
         
         return elements
     
-    def _match_section(self, text: str) -> [Tuple[str, str, int]]:
+    def _match_section(self, text: str) -> tuple[str, str, int] | None:
         """匹配章节标题"""
         for i, pattern in enumerate(self.section_patterns):
             match = re.match(pattern, text)
@@ -211,7 +212,7 @@ class DocumentStructureService:
                 return (text.split('：', 1)[0].split(':', 1)[0], title, i+1)
         return None
     
-    def _match_clause(self, text: str) -> [Tuple[str, str, int]]:
+    def _match_clause(self, text: str) -> tuple[str, str, int] | None:
         """匹配条款编号"""
         for i, pattern in enumerate(self.clause_patterns):
             match = re.match(pattern, text)
@@ -221,7 +222,7 @@ class DocumentStructureService:
                 return (text.split('：', 1)[0].split(':', 1)[0], title, i+1)
         return None
     
-    def _match_item(self, text: str) -> [Tuple[str, [str], int]]:
+    def _match_item(self, text: str) -> tuple[str, str | None, int] | None:
         """匹配子项编号"""
         for i, pattern in enumerate(self.item_patterns):
             match = re.match(pattern, text)
@@ -231,7 +232,7 @@ class DocumentStructureService:
                 return (text.split('：', 1)[0].split(':', 1)[0], title, i+1)
         return None
     
-    def _extract_loc(self, segment: dict[str, any]) -> Dict:
+    def _extract_loc(self, segment: dict[str, Any]) -> dict[str, Any]:
         """从段落中提取位置信息"""
         loc = segment.get("loc", {})
         if not loc:
@@ -390,7 +391,7 @@ class DocumentStructureService:
         
         return result
     
-    def _determine_parent_relationships(self, sections: list[dict]):
+    def _determine_parent_relationships(self, sections: list[dict[str, Any]]):
         """确定章节之间的父子关系"""
         for i, section in enumerate(sections):
             level_hint = section["level_hint"]
@@ -404,7 +405,7 @@ class DocumentStructureService:
             
             section["parent_id"] = parent_id
     
-    def _determine_clause_parent_relationships(self, clauses: list[dict]):
+    def _determine_clause_parent_relationships(self, clauses: list[dict[str, Any]]):
         """确定条款之间的父子关系"""
         for i, clause in enumerate(clauses):
             # 查找最近的父级clause
@@ -416,7 +417,7 @@ class DocumentStructureService:
             
             clause["parent_clause_id"] = parent_clause_id
     
-    def _determine_item_parent_relationships(self, items: list[dict]):
+    def _determine_item_parent_relationships(self, items: list[dict[str, Any]]):
         """确定条款子项之间的父子关系"""
         for i, item in enumerate(items):
             # 查找最近的父级item
@@ -430,7 +431,7 @@ class DocumentStructureService:
     
     # ===== V2 格式处理方法 =====
     
-    def parse_document_structure(self, doc_id: str, structure_data: dict[str, any], metadata: dict[str, any]) -> dict[str, any]:
+    def parse_document_structure(self, doc_id: str, structure_data: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
         """
         v2格式: 解析文档结构数据
         
@@ -470,13 +471,13 @@ class DocumentStructureService:
     def _parse_structure_node(
         self,
         doc_id: str,
-        node: dict[str, any],
-        parent_id: [str],
+        node: dict[str, Any],
+        parent_id: str | None,
         sections: list[SectionCreate],
         clauses: list[ClauseCreate],
         clause_items: list[ClauseItemCreate],
         level: int,
-        metadata: dict[str, any]
+        metadata: dict[str, Any]
     ):
         """
         递归解析结构节点
@@ -586,7 +587,7 @@ class DocumentStructureService:
                     metadata=metadata
                 )
     
-    def _determine_node_type(self, title: str, content: str, title_tags: Dict, content_tags: Dict) -> str:
+    def _determine_node_type(self, title: str, content: str, title_tags: dict[str, Any], content_tags: dict[str, Any]) -> str:
         """
         根据标题、内容和标签确定节点类型
         
@@ -677,11 +678,11 @@ class DocumentStructureService:
         self,
         doc_id: str,
         node_id: str,
-        parent_id: [str],
+        parent_id: str | None,
         level: int,
         title: str,
         content: str,
-        title_tags: Dict,
+        title_tags: dict[str, Any],
         page: int
     ) -> SectionCreate:
         """创建章节对象"""
@@ -710,11 +711,11 @@ class DocumentStructureService:
         self,
         doc_id: str,
         node_id: str,
-        parent_id: [str],
-        section_id: [str],
+        parent_id: str | None,
+        section_id: str | None,
         title: str,
         content: str,
-        tags: Dict,
+        tags: dict[str, Any],
         page: int
     ) -> ClauseCreate:
         """创建条款对象"""
@@ -749,10 +750,10 @@ class DocumentStructureService:
         self,
         doc_id: str,
         node_id: str,
-        parent_id: [str],
-        clause_id: [str],
+        parent_id: str | None,
+        clause_id: str | None,
         content: str,
-        tags: Dict,
+        tags: dict[str, Any],
         page: int
     ) -> ClauseItemCreate:
         """创建条款子项对象"""
@@ -783,7 +784,7 @@ class DocumentStructureService:
             score=score
         )
     
-    def _extract_number_and_title(self, text: str) -> Tuple[[str], str]:
+    def _extract_number_and_title(self, text: str) -> tuple[str | None, str]:
         """
         从文本中提取编号和标题
         
@@ -822,7 +823,7 @@ class DocumentStructureService:
         sections: list[SectionCreate],
         clauses: list[ClauseCreate],
         clause_items: list[ClauseItemCreate]
-    ) -> Tuple[list[SectionCreate], list[ClauseCreate], list[ClauseItemCreate]]:
+    ) -> tuple[list[SectionCreate], list[ClauseCreate], list[ClauseItemCreate]]:
         """
         建立章节、条款和子项之间的关系
         
@@ -852,7 +853,7 @@ class DocumentStructureService:
         
         return sections, clauses, clause_items
     
-    def _find_closest_section(self, order_index: int, sections: list[SectionCreate]) -> [str]:
+    def _find_closest_section(self, order_index: int, sections: list[SectionCreate]) -> str | None:
         """找到给定order_index最近的section"""
         closest_section = None
         closest_distance = float('inf')
@@ -866,7 +867,7 @@ class DocumentStructureService:
         
         return closest_section.id if closest_section else None
     
-    def _find_closest_clause(self, order_index: int, clauses: list[ClauseCreate]) -> [str]:
+    def _find_closest_clause(self, order_index: int, clauses: list[ClauseCreate]) -> str | None:
         """找到给定order_index最近的clause"""
         closest_clause = None
         closest_distance = float('inf')
@@ -914,14 +915,16 @@ class DocumentStructureService:
         
         return items
     
-    def _is_parent_clause(self, potential_parent, child) -> bool:
+    def _is_parent_clause(self, potential_parent: dict[str, Any], child: dict[str, Any]) -> bool:
         """判断一个条款是否是另一个条款的父级"""
-        if not potential_parent.number_token or not child.number_token:
+        parent_number = potential_parent.get("number_token")
+        child_number = child.get("number_token")
+        if not parent_number or not child_number:
             return False
         
         # 简单的基于编号层级判断
-        parent_parts = re.findall(r'\d+', potential_parent.number_token)
-        child_parts = re.findall(r'\d+', child.number_token)
+        parent_parts = re.findall(r'\d+', parent_number)
+        child_parts = re.findall(r'\d+', child_number)
         
         if len(parent_parts) >= len(child_parts):
             return False
@@ -933,22 +936,24 @@ class DocumentStructureService:
         
         return True
     
-    def _is_parent_item(self, potential_parent, child) -> bool:
+    def _is_parent_item(self, potential_parent: dict[str, Any], child: dict[str, Any]) -> bool:
         """判断一个子项是否是另一个子项的父级"""
-        if not potential_parent.number_token or not child.number_token:
+        parent_number = potential_parent.get("number_token")
+        child_number = child.get("number_token")
+        if not parent_number or not child_number:
             return False
         
         # 简单的基于编号层级判断
         # 例如：（一）是 1) 的父级
-        parent_is_paren = "（" in potential_parent.number_token or "(" in potential_parent.number_token
-        child_is_digit = bool(re.match(r'^\d+\)', child.number_token))
+        parent_is_paren = "（" in parent_number or "(" in parent_number
+        child_is_digit = bool(re.match(r'^\d+\)', child_number))
         
         if parent_is_paren and child_is_digit:
             return True
         
         # (1) 是 a) 的父级
-        parent_is_digit = bool(re.match(r'^\(\d+\)', potential_parent.number_token))
-        child_is_letter = bool(re.match(r'^[a-zA-Z]\)', child.number_token))
+        parent_is_digit = bool(re.match(r'^\(\d+\)', parent_number))
+        child_is_letter = bool(re.match(r'^[a-zA-Z]\)', child_number))
         
         if parent_is_digit and child_is_letter:
             return True

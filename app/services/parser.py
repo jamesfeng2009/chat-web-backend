@@ -1,6 +1,7 @@
 import os
 import json
 import re
+from typing import Any, Tuple
 
 from io import BytesIO
 from dataclasses import dataclass
@@ -27,11 +28,11 @@ class TextBlock:
     text: str
     block_type: str  # paragraph, heading, list, table, etc.
     level: int  # 标题级别或列表级别
-    bbox: [Tuple[float, float, float, float]] = None  # (x0, y0, x1, y1)
+    bbox: Tuple[float, float, float, float] | None = None  # (x0, y0, x1, y1)
     page_num: int = 0
-    style: [dict[str, any]] = None
-    
-    def to_dict(self) -> dict[str, any]:
+    style: dict[str, Any] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
         """转换为字典"""
         return {
             "text": self.text,
@@ -46,7 +47,7 @@ class TextBlock:
 class BaseParser:
     """基础解析器"""
     
-    def parse(self, content: bytes, file_type: str, options: dict[str, any] = None) -> list[TextBlock]:
+    def parse(self, content: bytes, file_type: str, options: dict[str, Any] | None = None) -> list[TextBlock]:
         """解析文档内容"""
         raise NotImplementedError
     
@@ -74,7 +75,7 @@ class PDFParser(BaseParser):
                 logger.warning(f"Failed to initialize PaddleOCR: {e}")
                 self.ocr = None
     
-    def parse(self, content: bytes, file_type: str, options: dict[str, any] = None) -> list[TextBlock]:
+    def parse(self, content: bytes, file_type: str, options: dict[str, Any] | None = None) -> list[TextBlock]:
         """解析PDF文档"""
         options = options or {}
         use_ocr = options.get("use_ocr", False)
@@ -265,7 +266,7 @@ class PDFParser(BaseParser):
 class DocxParser(BaseParser):
     """DOCX解析器"""
     
-    def parse(self, content: bytes, file_type: str, options: dict[str, any] = None) -> list[TextBlock]:
+    def parse(self, content: bytes, file_type: str, options: dict[str, Any] | None = None) -> list[TextBlock]:
         """解析DOCX文档"""
         try:
             # 打开DOCX文档
@@ -371,10 +372,11 @@ class DocxParser(BaseParser):
 class TxtParser(BaseParser):
     """TXT解析器"""
     
-    def parse(self, content: bytes, file_type: str, options: dict[str, any] = None) -> list[TextBlock]:
+    def parse(self, content: bytes, file_type: str, options: dict[str, Any] | None = None) -> list[TextBlock]:
         """解析TXT文档"""
         try:
             # 解码文本
+            options = options or {}
             encoding = options.get("encoding", "utf-8")
             text = content.decode(encoding, errors="replace")
             
@@ -437,10 +439,11 @@ class TxtParser(BaseParser):
 class MarkdownParser(BaseParser):
     """Markdown解析器"""
     
-    def parse(self, content: bytes, file_type: str, options: dict[str, any] = None) -> list[TextBlock]:
+    def parse(self, content: bytes, file_type: str, options: dict[str, Any] | None = None) -> list[TextBlock]:
         """解析Markdown文档"""
         try:
             # 解码文本
+            options = options or {}
             encoding = options.get("encoding", "utf-8")
             text = content.decode(encoding, errors="replace")
             
@@ -498,10 +501,11 @@ class MarkdownParser(BaseParser):
 class HTMLParser(BaseParser):
     """HTML解析器"""
     
-    def parse(self, content: bytes, file_type: str, options: dict[str, any] = None) -> list[TextBlock]:
+    def parse(self, content: bytes, file_type: str, options: dict[str, Any] | None = None) -> list[TextBlock]:
         """解析HTML文档"""
         try:
             # 解码文本
+            options = options or {}
             encoding = options.get("encoding", "utf-8")
             text = content.decode(encoding, errors="replace")
             
@@ -573,8 +577,8 @@ class ParserService:
         db: Session,
         document_id: str,
         parser_type: str = "auto",
-        options: dict[str, any] = None
-    ) -> dict[str, any]:
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         解析文档
         
@@ -645,7 +649,7 @@ class ParserService:
             )
             raise
     
-    def get_parse_result(self, db: Session, document_id: str) -> [dict[str, any]]:
+    def get_parse_result(self, db: Session, document_id: str) -> dict[str, Any] | None:
         """
         获取解析结果
         
@@ -678,7 +682,7 @@ class ParserService:
                 return "zh"
             return "en"
     
-    def _save_parse_result(self, db: Session, document_id: str, result: dict[str, any]):
+    def _save_parse_result(self, db: Session, document_id: str, result: dict[str, Any]):
         """保存解析结果"""
         # 这里可以将解析结果保存到数据库或文件系统
         # 为了简化，这里只是记录日志

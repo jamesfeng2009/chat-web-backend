@@ -1,3 +1,4 @@
+from typing import Any
 """
 三管线独立的LLM标注服务
 实现区域识别、结构类型判断和语义条款检测的并行处理
@@ -21,7 +22,7 @@ logger = get_logger(__name__)
 class PipelineLLMLabelingService:
     """三管线独立的LLM标注服务"""
     
-    def __init__(self, llm_service: any | None = None):
+    def __init__(self, llm_service: Any | None = None):
         # 区域标签定义（简化版）
         self.REGION_LABELS = ["COVER", "TOC", "MAIN", "APPENDIX", "SIGN"]
         
@@ -50,7 +51,7 @@ class PipelineLLMLabelingService:
         # LLM服务
         self.llm_service = llm_service
     
-    async def label_segments(self, segments: list[dict[str, any]], window_size: int = 10, overlap: int = 2) -> list[dict[str, any]]:
+    async def label_segments(self, segments: list[dict[str, Any]], window_size: int = 10, overlap: int = 2) -> list[dict[str, Any]]:
         """
         使用三管线并行标注文档段落
         
@@ -82,7 +83,7 @@ class PipelineLLMLabelingService:
         pipeline_results = await asyncio.gather(*pipeline_tasks, return_exceptions=True)
         
         # 过滤掉异常结果
-        valid_results: list[dict[str, any]] = [result for result in pipeline_results if isinstance(result, dict)]
+        valid_results: list[dict[str, Any]] = [result for result in pipeline_results if isinstance(result, dict)]
         
         # 合并三个管线的结果
         merged_results = self._merge_pipeline_results(
@@ -97,7 +98,7 @@ class PipelineLLMLabelingService:
         
         return scored_results
     
-    def _preprocess_segments(self, segments: list[dict[str, any]]) -> list[dict[str, any]]:
+    def _preprocess_segments(self, segments: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
         预处理段落，处理富文本内容
         
@@ -151,7 +152,7 @@ class PipelineLLMLabelingService:
             # 如果解析失败，返回原始文本
             return html_text
     
-    def _create_sliding_windows(self, segments: list[dict[str, any]], window_size: int, overlap: int) -> list[list[dict[str, any]]]:
+    def _create_sliding_windows(self, segments: list[dict[str, Any]], window_size: int, overlap: int) -> list[list[dict[str, Any]]]:
         """创建滑动窗口"""
         windows = []
         n = len(segments)
@@ -169,7 +170,7 @@ class PipelineLLMLabelingService:
         
         return windows
     
-    async def _pipeline_region_labeling(self, window: list[dict[str, any]]) -> dict[str, any]:
+    async def _pipeline_region_labeling(self, window: list[dict[str, Any]]) -> dict[str, Any]:
         """
         管线1：区域识别
         只判断 COVER / TOC / MAIN / APPENDIX / SIGN
@@ -226,7 +227,7 @@ class PipelineLLMLabelingService:
             logger.error(f"区域管线处理失败: {str(e)}")
             return {"pipeline": "region", "window": window, "result": []}
     
-    async def _pipeline_nc_type_labeling(self, window: list[dict[str, any]]) -> dict[str, any]:
+    async def _pipeline_nc_type_labeling(self, window: list[dict[str, Any]]) -> dict[str, Any]:
         """
         管线2：结构/格式判断
         根据region给每段选nc_type
@@ -286,7 +287,7 @@ class PipelineLLMLabelingService:
             logger.error(f"NC_TYPE管线处理失败: {str(e)}")
             return {"pipeline": "nc_type", "window": window, "result": []}
     
-    async def _pipeline_semantic_clause_detection(self, window: list[dict[str, any]]) -> dict[str, any]:
+    async def _pipeline_semantic_clause_detection(self, window: list[dict[str, Any]]) -> dict[str, Any]:
         """
         管线3：语义是否条款
         纯语义判断，这段内容，看上去是不是一条合同条款
@@ -337,7 +338,7 @@ class PipelineLLMLabelingService:
             logger.error(f"语义管线处理失败: {str(e)}")
             return {"pipeline": "semantic", "window": window, "result": []}
     
-    async def _call_llm_api(self, prompt: dict[str, any]) -> list[dict[str, any]]:
+    async def _call_llm_api(self, prompt: dict[str, Any]) -> list[dict[str, Any]]:
         """
         调用LLM API进行标注
         
@@ -361,7 +362,7 @@ class PipelineLLMLabelingService:
             # 回退到基于规则的方法
             return self._rule_based_llm_fallback(prompt)
     
-    def _rule_based_llm_fallback(self, prompt: dict[str, any]) -> list[dict[str, any]]:
+    def _rule_based_llm_fallback(self, prompt: dict[str, Any]) -> list[dict[str, Any]]:
         """
         基于规则的简化标注（用于没有LLM的情况）
         
@@ -386,7 +387,7 @@ class PipelineLLMLabelingService:
             # 默认返回空结果
             return []
     
-    def _mock_region_labeling_from_prompt(self, prompt: dict[str, any]) -> list[dict[str, any]]:
+    def _mock_region_labeling_from_prompt(self, prompt: dict[str, Any]) -> list[dict[str, Any]]:
         """
         从提示中提取窗口内容并模拟区域标注
         
@@ -420,7 +421,7 @@ class PipelineLLMLabelingService:
         
         return results
     
-    def _mock_nc_type_labeling_from_prompt(self, prompt: dict[str, any]) -> list[dict[str, any]]:
+    def _mock_nc_type_labeling_from_prompt(self, prompt: dict[str, Any]) -> list[dict[str, Any]]:
         """
         从提示中提取窗口内容并模拟NC_TYPE标注
         
@@ -459,7 +460,7 @@ class PipelineLLMLabelingService:
         
         return results
     
-    def _mock_semantic_clause_detection_from_prompt(self, prompt: dict[str, any]) -> list[dict[str, any]]:
+    def _mock_semantic_clause_detection_from_prompt(self, prompt: dict[str, Any]) -> list[dict[str, Any]]:
         """
         从提示中提取窗口内容并模拟语义条款检测
         
@@ -496,7 +497,7 @@ class PipelineLLMLabelingService:
         
         return results
     
-    def _parse_llm_response(self, response: str) -> list[dict[str, any]]:
+    def _parse_llm_response(self, response: str) -> list[dict[str, Any]]:
         """
         解析LLM响应，提取spans
         
@@ -518,7 +519,7 @@ class PipelineLLMLabelingService:
             logger.error(f"Failed to parse LLM response as JSON: {str(e)}")
             return []
 
-    def _concatenate_window_text(self, window: list[dict[str, any]]) -> str:
+    def _concatenate_window_text(self, window: list[dict[str, Any]]) -> str:
         """
         将窗口中的段落连接成一段连续文本
         
@@ -530,7 +531,7 @@ class PipelineLLMLabelingService:
         """
         return " ".join([seg.get("text", "") for seg in window])
     
-    def _mock_region_labeling(self, window: list[dict[str, any]]) -> list[dict[str, any]]:
+    def _mock_region_labeling(self, window: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
         模拟区域标注结果（用于演示）
         
@@ -592,7 +593,7 @@ class PipelineLLMLabelingService:
         # 默认返回MAIN
         return "MAIN"
     
-    def _mock_nc_type_labeling(self, window: list[dict[str, any]], region_spans: list[dict[str, any]]) -> list[dict[str, any]]:
+    def _mock_nc_type_labeling(self, window: list[dict[str, Any]], region_spans: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
         模拟NC_TYPE标注结果（用于演示）
         
@@ -677,7 +678,7 @@ class PipelineLLMLabelingService:
         
         return None
     
-    def _mock_semantic_clause_detection(self, window: list[dict[str, any]]) -> list[dict[str, any]]:
+    def _mock_semantic_clause_detection(self, window: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
         模拟语义条款检测结果（用于演示）
         
@@ -739,7 +740,7 @@ class PipelineLLMLabelingService:
         
         return "NON_CLAUSE"
     
-    def _merge_pipeline_results(self, pipeline_results: list[dict[str, any]], original_segments: list[dict[str, any]], window_size: int = 0, overlap: int = 0) -> list[dict[str, any]]:
+    def _merge_pipeline_results(self, pipeline_results: list[dict[str, Any]], original_segments: list[dict[str, Any]], window_size: int = 0, overlap: int = 0) -> list[dict[str, Any]]:
         """
         合并三个管线的标注结果
         
@@ -827,7 +828,7 @@ class PipelineLLMLabelingService:
         
         return final_results
     
-    def _calculate_clause_scores(self, merged_results: list[dict[str, any]]) -> list[dict[str, any]]:
+    def _calculate_clause_scores(self, merged_results: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
         计算条款分数
         给内容（role）、区域（region）、格式（nc_type）三类信号赋权，加权求和形成一个"条款分数"
@@ -895,7 +896,7 @@ class PipelineLLMLabelingService:
         
         return scored_results
     
-    def merge_segments_by_clause(self, scored_segments: list[dict[str, any]], score_threshold: str = "1") -> list[dict[str, any]]:
+    def merge_segments_by_clause(self, scored_segments: list[dict[str, Any]], score_threshold: str = "1") -> list[dict[str, Any]]:
         """
         根据条款分数合并段落为条款单元
         

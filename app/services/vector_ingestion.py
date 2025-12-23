@@ -3,11 +3,16 @@
 支持批量向量化并写入指定Milvus集合，利用动态字段特性
 """
 import asyncio
+from typing import Any, Dict
+
 from pymilvus import connections, Collection, utility
 
 from app.core.logger import get_logger
 from app.core.config import settings
 from app.schemas.vector_ingestion import VectorIngestRequest, VectorIngestResponse, VectorIngestData, FailedItem
+
+# Type alias for search request (can be replaced with actual schema)
+VectorSearchRequest = Any
 
 
 logger = get_logger(__name__)
@@ -193,7 +198,7 @@ class VectorIngestionService:
             dim = 1536  # 默认维度，应与集合匹配
             return [[random.random() for _ in range(dim)] for _ in texts]
     
-    def _prepare_columns(self, items: list[any], embeddings: list[list[float]]) -> dict[str, List]:
+    def _prepare_columns(self, items: list[VectorIngestData], embeddings: list[list[float]]) -> dict[str, list[Any]]:
         """
         准备列式数据
         
@@ -268,7 +273,7 @@ class VectorIngestionService:
         
         return columns
     
-    def _prepare_clause_item_vector_item(self, doc_id: str, item: dict[str, any], clauses: list[dict[str, any]], section_map: dict[str, any]) -> [dict[str, any]]:
+    def _prepare_clause_item_vector_item(self, doc_id: str, item: dict[str, Any], clauses: list[dict[str, Any]], section_map: dict[str, Any]) -> dict[str, Any] | None:
         """准备条款子项向量项"""
         if not item or not item.get("content"):
             return None
@@ -342,7 +347,7 @@ class VectorIngestionService:
         
         return " ".join(parts)
     
-    async def _generate_embeddings(self, vector_items: list[dict[str, any]]) -> list[list[float]]:
+    async def _generate_embeddings(self, vector_items: list[dict[str, Any]]) -> list[list[float]]:
         """生成向量"""
         try:
             # 提取文本
@@ -356,7 +361,7 @@ class VectorIngestionService:
             logger.error(f"生成向量失败: {str(e)}")
             raise
     
-    async def _insert_vectors(self, collection_name: str, vector_items: list[dict[str, any]], embeddings: list[list[float]]) -> dict[str, any]:
+    async def _insert_vectors(self, collection_name: str, vector_items: list[dict[str, Any]], embeddings: list[list[float]]) -> dict[str, Any]:
         """插入向量到Milvus"""
         try:
             # 准备数据
@@ -405,7 +410,7 @@ class VectorIngestionService:
                 "failed_items": [{"index": i, "reason": str(e)} for i in range(len(vector_items))]
             }
     
-    async def search_vectors(self, search_request: VectorSearchRequest) -> dict[str, any]:
+    async def search_vectors(self, search_request: VectorSearchRequest) -> dict[str, Any]:
         """
         向量搜索
         
@@ -442,7 +447,7 @@ class VectorIngestionService:
                 "results": []
             }
     
-    def _format_search_result(self, milvus_result: Dict, search_request: VectorSearchRequest) -> dict[str, any]:
+    def _format_search_result(self, milvus_result: Dict[str, Any], search_request: Any) -> dict[str, Any]:
         """格式化搜索结果"""
         try:
             results = []
@@ -501,7 +506,7 @@ class VectorIngestionService:
                 "results": []
             }
     
-    async def batch_vectorize(self, vectors_data: list[dict[str, any]], collection_name: [str] = None) -> dict[str, any]:
+    async def batch_vectorize(self, vectors_data: list[dict[str, Any]], collection_name: str | None = None) -> dict[str, Any]:
         """
         批量向量化数据
         
@@ -574,7 +579,7 @@ class VectorIngestionService:
                 "results": [{"id": data.get("id"), "type": data.get("type"), "success": False, "error": str(e)} for data in vectors_data]
             }
     
-    def _prepare_vector_item_from_data(self, data: dict[str, any]) -> [dict[str, any]]:
+    def _prepare_vector_item_from_data(self, data: dict[str, Any]) -> dict[str, Any] | None:
         """从数据准备向量项"""
         if not data or not data.get("content"):
             return None
@@ -636,7 +641,7 @@ class VectorIngestionService:
         
         return None
 
-    async def delete_document_vectors(self, doc_id: str) -> dict[str, any]:
+    async def delete_document_vectors(self, doc_id: str) -> dict[str, Any]:
         """
         删除文档的所有向量
         

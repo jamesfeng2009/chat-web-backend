@@ -3,6 +3,8 @@
 负责创建和管理Milvus向量集合
 """
 
+from typing import Any
+
 from pymilvus import (
     connections, 
     FieldSchema, 
@@ -39,7 +41,7 @@ class VectorCollectionService:
             logger.error(f"连接Milvus失败: {str(e)}")
             raise
     
-    def create_collection(self, collection_data: VectorCollectionCreate) -> dict[str, any]:
+    def create_collection(self, collection_data: VectorCollectionCreate) -> dict[str, Any]:
         """
         创建新的向量集合
         
@@ -49,9 +51,8 @@ class VectorCollectionService:
         Returns:
             创建结果信息
         """
+        collection_name = collection_data.name
         try:
-            collection_name = collection_data.name
-            
             # 检查集合是否已存在
             if utility.has_collection(collection_name):
                 logger.warning(f"集合已存在: {collection_name}")
@@ -228,7 +229,7 @@ class VectorCollectionService:
                 "collection_name": collection_name
             }
     
-    def list_collections(self) -> dict[str, any]:
+    def list_collections(self) -> dict[str, Any]:
         """
         列出所有向量集合
         
@@ -273,7 +274,7 @@ class VectorCollectionService:
                 "total": 0
             }
     
-    def drop_collection(self, collection_name: str) -> dict[str, any]:
+    def drop_collection(self, collection_name: str) -> dict[str, Any]:
         """
         删除向量集合
         
@@ -311,7 +312,7 @@ class VectorCollectionService:
                 "collection_name": collection_name
             }
     
-    def get_collection_info(self, collection_name: str) -> dict[str, any]:
+    def get_collection_info(self, collection_name: str) -> dict[str, Any]:
         """
         获取向量集合详细信息
         

@@ -2,12 +2,18 @@
 条款切分服务
 基于结构特征和语义相似度的智能切分算法
 """
+import re
+from typing import TYPE_CHECKING, Any
+
 import numpy as np
 from dataclasses import dataclass
 import regex
 from sentence_transformers import SentenceTransformer
 
 from app.core.logger import get_logger
+
+if TYPE_CHECKING:
+    from sentence_transformers import CrossEncoder
 
 logger = get_logger(__name__)
 
@@ -33,7 +39,11 @@ class Block:
 
 class ClauseChunkingService:
     """条款切分服务"""
-    
+
+    _emb_model: SentenceTransformer | None = None
+    _cross_encoder: "CrossEncoder | None" = None
+    model_configs: dict[str, dict[str, str]]
+
     def __init__(self):
         # 初始化模型（延迟加载）
         self._emb_model = None
@@ -83,14 +93,15 @@ class ClauseChunkingService:
                 logger.error(f"Failed to load cross encoder model {model_name}: {e}")
                 raise
     
-    def embed_batch(self, texts: list[str], batch_size=64) -> np.ndarray:
+    def embed_batch(self, texts: list[str], batch_size: int = 64) -> np.ndarray:
         """批量文本嵌入"""
-        if not texts: 
-            return np.zeros((0,1), dtype=np.float32)
-        
+        if not texts:
+            return np.zeros((0, 1), dtype=np.float32)
+
         self._ensure_embedding_model()
+        assert self._emb_model is not None
         return self._emb_model.encode(
-            texts, batch_size=batch_size, convert_to_numpy=True, 
+            texts, batch_size=batch_size, convert_to_numpy=True,
             normalize_embeddings=True, show_progress_bar=False
         ).astype(np.float32)
     
@@ -186,15 +197,15 @@ class ClauseChunkingService:
 
         return spans
     
-    def chunk_blocks(self, blocks: list[Block], mode: str = "contract", use_cross_encoder=False) -> dict[str, any]:
+    def chunk_blocks(self, blocks: list[Block], mode: str = "contract", use_cross_encoder=False) -> dict[str, Any]:
         """
         对文本块进行条款切分
-        
+
         Args:
             blocks: 文本块列表
             mode: 切分模式 - "contract"(合同模式), "summary"(汇总模式), "single"(单条款模式)
             use_cross_encoder: 是否使用交叉编码器进行低置信复核
-            
+
         Returns:
             包含分段结果和文本的字典
         """
@@ -225,7 +236,7 @@ class ClauseChunkingService:
         # 调用核心切分算法
         return self._clause_chunk(blocks, use_cross_encoder, cfg)
     
-    def _clause_chunk(self, blocks: list[Block], use_cross_encoder=False, cfg: dict[str, any] | None = None):
+    def _clause_chunk(self, blocks: list[Block], use_cross_encoder=False, cfg: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         准确度优先分段：
         - 仅用形态与相似度，无关键词表
@@ -391,10 +402,10 @@ class ClauseChunkingService:
             # 找出 |(s_start-s_cont)| 小于 tie_margin 的位置，做三元组(prev, head, curr) 打分
             to_review = []
             # 先走一遍，记录每个位置所属段头索引
-            head_idx = None
-            head_of = [None] * n
+            head_idx: int | None = None
+            head_of: list[int | None] = [None] * n
             for i in range(n):
-                if states[i] == 0: 
+                if states[i] == 0:
                     head_idx = i
                 head_of[i] = head_idx
             

@@ -1,7 +1,7 @@
 import secrets
 
 
-from pydantic import anyHttpUrl, field_validator
+from pydantic import field_validator
 from pydantic_settings import BaseSettings as PydanticBaseSettings
 
 
@@ -15,11 +15,12 @@ class Settings(PydanticBaseSettings):
     # 服务器配置
     HOST: str = "0.0.0.0"
     PORT: int = 8000
-    
+
     # 数据库配置
     DATABASE_URL: str = "mysql+pymysql://root:password@localhost:3306/legal_db"
     DATABASE_POOL_SIZE: int = 10
     DATABASE_MAX_OVERFLOW: int = 20
+    DATABASE_ECHO: bool = False  # 生产环境设为False，开发时可设为True用于调试
     
     # Redis配置
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -34,14 +35,14 @@ class Settings(PydanticBaseSettings):
     STORAGE_PATH: str = "./storage"
     
     # MinIO配置
-    MINIO_ENDPOINT: [str] = None
-    MINIO_ACCESS_KEY: [str] = None
-    MINIO_SECRET_KEY: [str] = None
+    MINIO_ENDPOINT: str | None = None
+    MINIO_ACCESS_KEY: str | None = None
+    MINIO_SECRET_KEY: str | None = None
     MINIO_SECURE: bool = False
     MINIO_BUCKET_NAME: str = "legal-docs"
-    
+
     # AI服务配置
-    OPENAI_API_KEY: [str] = None
+    OPENAI_API_KEY: str | None = None
     EMBEDDING_MODEL: str = "text-embedding-3-large"
     EMBEDDING_DIMENSION: int = 1536
     
@@ -64,16 +65,28 @@ class Settings(PydanticBaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
     
     # CORS配置
-    BACKEND_CORS_ORIGINS: list[anyHttpUrl] = []
+    # 默认允许本地开发环境，生产环境应通过环境变量配置具体域名
+    BACKEND_CORS_ORIGINS: list[str] = []
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
-    def assemble_cors_origins(cls, v):
-        if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",")]
-        elif isinstance(v, (list, str)):
+    def assemble_cors_origins(cls, v: list[str] | str) -> list[str]:
+        """
+        将CORS来源配置转换为URL列表
+
+        支持两种格式：
+        1. 逗号分隔的字符串: "http://localhost:3000,http://localhost:8080"
+        2. 列表: ["http://localhost:3000", "http://localhost:8080"]
+        """
+        # 如果环境变量是字符串，解析为列表
+        if isinstance(v, str):
+            if not v.strip() or v.strip() == "[]":
+                return []  # 空字符串返回空列表
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        # 如果已经是列表，直接返回
+        elif isinstance(v, list):
             return v
-        raise ValueError(v)
+        raise ValueError(f"BACKEND_CORS_ORIGINS must be a comma-separated string or list of URLs, got: {type(v)}")
 
     # JWT配置
     ALGORITHM: str = "HS256"
@@ -95,8 +108,8 @@ class Settings(PydanticBaseSettings):
     MAX_SEARCH_LIMIT: int = 100
     
     class Config:
-        env_file = ".env"
-        case_sensitive = True
+        env_file: str = ".env"
+        case_sensitive: bool = True
 
 
 settings = Settings()

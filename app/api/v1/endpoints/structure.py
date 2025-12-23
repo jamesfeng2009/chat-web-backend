@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
+from typing import Any
 
 
 from app.core.database import get_db
-from app.schemas.document import DocumentResponse
 from app.services.document import document_service
 from app.services.structure import structure_service
 from app.core.logger import get_logger
@@ -16,7 +16,7 @@ logger = get_logger(__name__)
 async def structure_document(
     document_id: str,
     structure_type: str = "auto",
-    options: [dict[str, any]] = None,
+    options: dict[str, Any] | None = None,
     background_tasks: BackgroundTasks = BackgroundTasks(),
     db: Session = Depends(get_db)
 ):
@@ -40,6 +40,7 @@ async def structure_document(
     document_service.update_document_status(
         db=db,
         document_id=document_id,
+        status="processing",
         structure_status="processing"
     )
     

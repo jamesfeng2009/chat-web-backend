@@ -3,33 +3,57 @@
 提供语义搜索、相似度搜索和混合搜索功能
 """
 
+import re
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+from typing import Any
 
 from app.services.vector_ingestion import VectorIngestionService
-from app.core.config import settings
 
 
 router = APIRouter()
+
+
+def build_filter_expr(**conditions) -> str:
+    """
+    安全地构建过滤表达式，防止注入攻击
+    """
+    validated_parts = []
+    for key, value in conditions.items():
+        if value is None:
+            continue
+        # 验证key只包含字母、数字和下划线
+        if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', key):
+            raise ValueError(f"无效的过滤键: {key}")
+        # 验证value是字符串或数字
+        if isinstance(value, str):
+            # 转义单引号
+            value = value.replace("'", "\\'")
+            validated_parts.append(f"{key} == '{value}'")
+        elif isinstance(value, (int, float)):
+            validated_parts.append(f"{key} == {value}")
+        else:
+            raise ValueError(f"不支持的过滤值类型: {type(value)}")
+    return " && ".join(validated_parts) if validated_parts else ""
 
 
 class VectorSearchRequest(BaseModel):
     query: str = Field(..., description="搜索查询文本")
     collection_name: str = Field("mirrors_clause_vectors", description="向量集合名称")
     limit: int = Field(10, description="返回结果数量限制")
-    filter_expr: [str] = Field(None, description="过滤表达式")
-    output_fields: [list[str]] = Field(None, description="返回字段列表")
-    search_params: [dict[str, any]] = Field(None, description="搜索参数")
+    filter_expr: str | None = Field(None, description="过滤表达式")
+    output_fields: list[str] | None = Field(None, description="返回字段列表")
+    search_params: dict[str, Any] | None = Field(None, description="搜索参数")
 
 
 class HybridSearchRequest(BaseModel):
     query: str = Field(..., description="搜索查询文本")
-    keywords: [list[str]] = Field(None, description="关键词列表")
+    keywords: list[str] | None = Field(None, description="关键词列表")
     collection_name: str = Field("mirrors_clause_vectors", description="向量集合名称")
     limit: int = Field(10, description="返回结果数量限制")
-    filter_expr: [str] = Field(None, description="过滤表达式")
-    output_fields: [list[str]] = Field(None, description="返回字段列表")
-    search_params: [dict[str, any]] = Field(None, description="搜索参数")
+    filter_expr: str | None = Field(None, description="过滤表达式")
+    output_fields: list[str] | None = Field(None, description="返回字段列表")
+    search_params: dict[str, Any] | None = Field(None, description="搜索参数")
     semantic_weight: float = Field(0.7, description="语义搜索权重，范围0-1")
     keyword_weight: float = Field(0.3, description="关键词搜索权重，范围0-1")
 
@@ -143,8 +167,8 @@ async def get_clause_by_id(
         条款详情
     """
     try:
-        # 构建过滤表达式
-        filter_expr = f"clause_id == '{clause_id}'"
+        # 构建过滤表达式（安全地）
+        filter_expr = build_filter_expr(clause_id=clause_id)
         
         # 构建搜索请求
         search_request = VectorSearchRequest(
@@ -186,8 +210,8 @@ async def get_document_clauses(
         文档条款列表
     """
     try:
-        # 构建过滤表达式
-        filter_expr = f"doc_id == '{doc_id}' && unit_type == 'CLAUSE'"
+        # 构建过滤表达式（安全地）
+        filter_expr = build_filter_expr(doc_id=doc_id, unit_type='CLAUSE')
         
         # 构建搜索请求
         search_request = VectorSearchRequest(
@@ -212,7 +236,7 @@ async def get_document_clauses(
 @router.get("/document/{doc_id}/clause_items")
 async def get_document_clause_items(
     doc_id: str,
-    clause_id: [str] = Query(None, description="指定条款ID，只返回该条款的子项"),
+    clause_id: str | None = Query(None, description="指定条款ID，只返回该条款的子项"),
     collection_name: str = Query("mirrors_clause_vectors", description="向量集合名称"),
     vector_service: VectorIngestionService = Depends(get_vector_service)
 ):
@@ -228,11 +252,11 @@ async def get_document_clause_items(
         文档条款子项列表
     """
     try:
-        # 构建过滤表达式
-        filter_expr = f"doc_id == '{doc_id}' && unit_type == 'CLAUSE_ITEM'"
-        
+        # 构建过滤表达式（安全地）
+        conditions = {"doc_id": doc_id, "unit_type": "CLAUSE_ITEM"}
         if clause_id:
-            filter_expr += f" && clause_id == '{clause_id}'"
+            conditions["clause_id"] = clause_id
+        filter_expr = build_filter_expr(**conditions)
         
         # 构建搜索请求
         search_request = VectorSearchRequest(
@@ -256,12 +280,12 @@ async def get_document_clause_items(
 
 
 def _merge_search_results(
-    semantic_result: dict[str, any],
-    keyword_results: list[dict[str, any]],
+    semantic_result: dict[str, Any],
+    keyword_results: list[dict[str, Any]],
     semantic_weight: float,
     keyword_weight: float,
     limit: int
-) -> list[dict[str, any]]:
+) -> list[dict[str, Any]]:
     """
     合并语义搜索和关键词搜索结果
     

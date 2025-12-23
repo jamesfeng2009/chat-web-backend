@@ -43,7 +43,7 @@ async def semantic_search_get(
     query: str = Query(..., description="查询文本"),
     embedding_model: str = Query(default="text-embedding-3-large", description="向量模型"),
     limit: int = Query(default=10, ge=1, le=100, description="返回结果数"),
-    filters: [str] = Query(default=None, description="过滤条件(JSON格式)"),
+    filters: str | None = Query(default=None, description="过滤条件(JSON格式)"),
     include_content: bool = Query(default=True, description="是否包含内容"),
     db: Session = Depends(get_db)
 ):
@@ -107,7 +107,7 @@ async def similarity_search_get(
     query: str = Query(..., description="查询文本"),
     embedding_model: str = Query(default="text-embedding-3-large", description="向量模型"),
     limit: int = Query(default=10, ge=1, le=100, description="返回结果数"),
-    filters: [str] = Query(default=None, description="过滤条件(JSON格式)"),
+    filters: str | None = Query(default=None, description="过滤条件(JSON格式)"),
     include_content: bool = Query(default=True, description="是否包含内容"),
     db: Session = Depends(get_db)
 ):

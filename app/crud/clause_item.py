@@ -161,12 +161,12 @@ class CRUDClauseItem(CRUDBase[ClauseItem, ClauseItemCreate, ClauseItemUpdate]):
         return self.update(db, db_obj=db_obj, obj_in=update_data)
 
     def update_embedding_id(
-        self, 
-        db: Session, 
-        *, 
+        self,
+        db: Session,
+        *,
         id: str,
         embedding_id: str
-    ) -> [ClauseItem]:
+    ) -> ClauseItem | None:
         """
         通过ID更新子项的向量ID
         """
@@ -228,20 +228,20 @@ class CRUDClauseItem(CRUDBase[ClauseItem, ClauseItemCreate, ClauseItemUpdate]):
         return db_objs
 
     def get_tree(
-        self, 
-        db: Session, 
-        *, 
+        self,
+        db: Session,
+        *,
         clause_id: str
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """
         获取子项的树形结构
         """
         # 获取所有子项
         all_items = self.get_by_clause_all(db, clause_id=clause_id)
-        
+
         # 构建字典映射
         items_dict = {item.id: item.dict() for item in all_items}
-        
+
         # 构建树形结构
         root_items = []
         for item_id, item in items_dict.items():
@@ -253,8 +253,42 @@ class CRUDClauseItem(CRUDBase[ClauseItem, ClauseItemCreate, ClauseItemUpdate]):
                 parent["children"].append(item)
             else:
                 root_items.append(item)
-                
+
         return root_items
+
+    def count_by_doc_id(self, db: Session, *, doc_id: str) -> int:
+        """
+        统计文档的子项数量
+        """
+        # 子项关联到条款，需要通过条款查询
+        return (
+            db.query(self.model)
+            .join(self.model.clause)
+            .filter(
+                and_(
+                    self.model.clause.has(doc_id=doc_id),
+                    self.model.deleted == False
+                )
+            )
+            .count()
+        )
+
+    def delete_by_doc_id(self, db: Session, *, doc_id: str) -> int:
+        """
+        删除文档的所有子项（软删除）
+        """
+        # 子项关联到条款，需要通过条款查询
+        return (
+            db.query(self.model)
+            .join(self.model.clause)
+            .filter(
+                and_(
+                    self.model.clause.has(doc_id=doc_id),
+                    self.model.deleted == False
+                )
+            )
+            .update({"deleted": True}, synchronize_session=False)
+        )
 
 
 crud_clause_item = CRUDClauseItem(ClauseItem)
